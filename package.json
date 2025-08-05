@@ -1,0 +1,23 @@
+{
+  "name": "autodevelop-v2",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"nodemon backend/server.js\" \"yarn --cwd frontend dev\"",
+    "build": "yarn --cwd frontend build",
+    "start": "node backend/server.js",
+    "build:frontend": "cd frontend && yarn build",
+    "preview": "cd frontend && yarn preview"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "openai": "^5.11.0",
+    "react-router-dom": "^7.7.1"
+  },
+  "devDependencies": {
+    "concurrently": "^7.6.0",
+    "nodemon": "^3.0.3"
+  }
+}
