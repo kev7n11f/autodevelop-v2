@@ -28,7 +28,9 @@ See the frontend and backend README files for setup instructions.
 
 ## Analytics
 
-Anonymous usage analytics may be collected to improve the platform. For information on privacy, see our [Privacy Policy](./frontend/src/components/Privacy.jsx).
+Vercel Analytics is integrated to provide insights into application usage and performance. The analytics are privacy-focused and cookie-free. For detailed configuration and maintenance information, see the [Vercel Analytics Configuration Guide](./VERCEL_ANALYTICS.md).
+
+For privacy information, see our [Privacy Policy](./frontend/src/components/Privacy.jsx).
 
 ## License
 
