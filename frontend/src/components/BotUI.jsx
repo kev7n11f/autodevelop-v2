@@ -20,7 +20,18 @@ export default function BotUI() {
   const send = async () => {
     if (!input.trim()) return;
     
-    const userMsg = input;
+    const userMsg = input.trim();
+    
+    // Client-side validation
+    if (userMsg.length > 2000) {
+      setLog(prev => [...prev, { 
+        from: 'bot', 
+        text: `Your message is too long (${userMsg.length} characters). Please keep it under 2000 characters.`,
+        isError: true
+      }]);
+      return;
+    }
+    
     setInput('');
     setLog(prev => [...prev, { from: 'user', text: userMsg }]);
     setIsLoading(true);
@@ -31,12 +42,49 @@ export default function BotUI() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: userMsg })
       });
+      
       const data = await res.json();
-      setLog(prev => [...prev, { from: 'bot', text: data.reply }]);
-    } catch {
+      
+      if (!res.ok) {
+        // Handle specific error responses
+        let errorMessage = data.error || 'An unexpected error occurred';
+        
+        if (res.status === 429) {
+          const retryAfter = data.retryAfter || data.timeRemaining;
+          errorMessage = `${errorMessage}${retryAfter ? ` Please wait ${retryAfter} and try again.` : ''}`;
+        } else if (data.hint) {
+          errorMessage += ` ${data.hint}`;
+        }
+        
+        if (data.supportEmail) {
+          errorMessage += ` If this continues, please contact ${data.supportEmail}`;
+          if (data.errorId) {
+            errorMessage += ` (Error ID: ${data.errorId})`;
+          }
+        }
+        
+        setLog(prev => [...prev, { 
+          from: 'bot', 
+          text: errorMessage,
+          isError: true 
+        }]);
+        return;
+      }
+      
+      // Handle successful response
+      const botReply = data.reply || "I'm sorry, I couldn't generate a response.";
       setLog(prev => [...prev, { 
         from: 'bot', 
-        text: 'Sorry, I encountered an error. Please try again later.' 
+        text: botReply,
+        responseTime: data.meta?.responseTime
+      }]);
+      
+    } catch (networkError) {
+      console.error('Network error:', networkError);
+      setLog(prev => [...prev, { 
+        from: 'bot', 
+        text: 'Unable to connect to the server. Please check your internet connection and try again.',
+        isError: true
       }]);
     } finally {
       setIsLoading(false);
@@ -78,17 +126,20 @@ export default function BotUI() {
           {log.map((message, index) => (
             <div 
               key={index} 
-              className={`message ${message.from === 'user' ? 'message-user' : 'message-bot'}`}
+              className={`message ${message.from === 'user' ? 'message-user' : 'message-bot'} ${message.isError ? 'message-error' : ''}`}
             >
               <div className="message-avatar">
-                {message.from === 'user' ? '👤' : '🤖'}
+                {message.from === 'user' ? '👤' : (message.isError ? '⚠️' : '🤖')}
               </div>
               <div className="message-content">
-                <div className="message-bubble">
+                <div className={`message-bubble ${message.isError ? 'error-bubble' : ''}`}>
                   {message.text}
                 </div>
                 <div className="message-time">
                   {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {message.responseTime && (
+                    <span className="response-time"> • {message.responseTime}ms</span>
+                  )}
                 </div>
               </div>
             </div>
