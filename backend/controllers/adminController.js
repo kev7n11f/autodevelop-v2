@@ -5,7 +5,15 @@ const { getSuspiciousActivity, unblockUser } = require('../utils/abuseMonitor');
 const adminAuth = (req, res, next) => {
   const adminKey = req.headers['x-admin-key'] || req.query.adminKey;
   
-  if (!adminKey || adminKey !== process.env.ADMIN_KEY) {
+const crypto = require('crypto');
+
+// Simple admin authentication (in production, use proper authentication)
+const adminAuth = (req, res, next) => {
+  const adminKey = req.headers['x-admin-key'] || req.query.adminKey;
+  const expectedKey = process.env.ADMIN_KEY;
+
+  // Both keys must be present and strings
+  if (typeof adminKey !== 'string' || typeof expectedKey !== 'string') {
     logger.warn('Unauthorized admin access attempt', {
       ip: req.ip,
       userAgent: req.get('User-Agent'),
