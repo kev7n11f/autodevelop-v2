@@ -197,7 +197,7 @@ module.exports = async (req, res) => {
 
     res.status(statusCode).json({ 
       error: userMessage,
-      errorId: Date.now().toString(36), // Simple error ID for support
+      errorId: crypto.randomUUID(), // Secure error ID for support
       supportEmail: 'support@autodevelop.ai'
     });
   }
