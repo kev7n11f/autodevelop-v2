@@ -7,7 +7,8 @@
     "build": "yarn --cwd frontend build",
     "start": "node backend/server.js",
     "build:frontend": "cd frontend && yarn build",
-    "preview": "cd frontend && yarn preview"
+    "preview": "cd frontend && yarn preview",
+  "postinstall": "yarn --cwd frontend install"
   },
   "dependencies": {
     "cors": "^2.8.5",
