@@ -9,7 +9,14 @@ const suspiciousPatterns = new Map();
 const ABUSE_CONFIG = {
   maxRequestsPerMinute: 10,
   maxRequestsPerHour: 100,
-  suspiciousKeywords: ['hack', 'exploit', 'attack', 'bypass', 'injection'],
+  suspiciousKeywords: [
+    'hack', 
+    'exploit', 
+    'steal password', 
+    'drop table', 
+    '1=1', 
+    'unauthorized access'
+  ],
   maxMessageLength: 2000,
   blockDurationMinutes: 30
 };
