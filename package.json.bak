@@ -1,7 +1,0 @@
-{
-  "name": "autodevelop-v2-root-install",
-  "version": "1.0.0",
-  "scripts": {
-    "postinstall": "cd frontend && yarn install"
-  }
-}
