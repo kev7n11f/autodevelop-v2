@@ -2,7 +2,15 @@
 node_modules
 .env
 package-lock.json
+
 # Vite
 frontend/dist
 
+# Vercel
 .vercel
+
+# Logs and monitoring data
+logs/
+*.log
+error.log
+app.log
