@@ -16,7 +16,43 @@ AutoDevelop.ai is a modern, full-stack platform that empowers developers and ent
 
 ## Getting Started
 
-See the frontend and backend README files for setup instructions.
+### Package Manager
+
+This project uses **Yarn** as the package manager. Please ensure you have Yarn installed before proceeding.
+
+#### Installing Yarn
+```bash
+# Install Yarn globally via npm (one-time setup)
+npm install -g yarn
+
+# Or using other methods: https://yarnpkg.com/getting-started/install
+```
+
+#### Development Setup
+```bash
+# Clone the repository
+git clone https://github.com/kev7n11f/autodevelop-v2.git
+cd autodevelop-v2
+
+# Install all dependencies
+yarn install
+
+# Start the development server (both backend and frontend)
+yarn dev
+
+# Build for production
+yarn build
+
+# Start production server
+yarn start
+```
+
+#### Important Notes
+- **Use `yarn` instead of `npm`** for all package management operations
+- The project includes a `.npmrc` file that prevents npm from creating `package-lock.json`
+- Always use `yarn add <package>` to add new dependencies, not `npm install <package>`
+
+For more detailed setup instructions, see the frontend and backend README files.
 
 ### Contact
 
