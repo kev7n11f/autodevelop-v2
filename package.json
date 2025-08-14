@@ -7,7 +7,8 @@
     "build": "yarn --cwd frontend build",
     "start": "node backend/server.js",
     "build:frontend": "yarn --cwd frontend build",
-    "preview": "yarn --cwd frontend preview"
+    "preview": "yarn --cwd frontend preview",
+    "postinstall": "yarn --cwd frontend install"
   },
   "dependencies": {
     "compression": "^1.8.1",
@@ -18,7 +19,6 @@
     "express-slow-down": "^3.0.0",
     "helmet": "^8.1.0",
     "openai": "^5.11.0",
-    "react-router-dom": "^7.7.1",
     "winston": "^3.17.0"
   },
   "devDependencies": {
