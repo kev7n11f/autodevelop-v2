@@ -91,14 +91,71 @@ app.listen(port, () => console.log(\`🌐  Server listening on port \${port}\`))
 EOF
 
 cat > backend/controllers/botController.js <<'EOF'
+const OpenAI = require('openai');
+
+if (!process.env.OPENAI_API_KEY) {
+  console.error('❌ OPENAI_API_KEY is not set. Please set it in your environment or .env file.');
+  process.exit(1);
+}
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
+
 exports.chat = async (req, res) => {
   try {
     const { message } = req.body;
-    // 🧠 TODO: add OpenAI call here
-    res.json({ reply: `Echo: ${message}` });
+    
+    if (!message || !message.trim()) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: "You are a helpful AI assistant for AutoDevelop.ai. Help users transform their ideas into reality with practical, step-by-step guidance. Be concise but thorough."
+        },
+        {
+          role: "user",
+          content: message
+        }
+      ],
+      max_tokens: 500,
+      temperature: 0.7
+    });
+
+    let reply;
+    if (!completion.choices || !Array.isArray(completion.choices)) {
+      reply = "Sorry, the AI response format was unexpected (no choices array).";
+    } else if (completion.choices.length === 0) {
+      reply = "Sorry, the AI did not return any response choices.";
+    } else if (!completion.choices[0].message || !completion.choices[0].message.content) {
+      reply = "Sorry, the AI response was missing content.";
+    } else {
+      reply = completion.choices[0].message.content;
+    }
+    res.json({ reply });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    console.error('OpenAI API Error:', err);
+    // Enhanced error handling for different scenarios
+    if (err.response && err.response.status) {
+      // OpenAI API returned an error response
+      if (err.response.status === 401) {
+        return res.status(401).json({ error: 'Invalid or missing OpenAI API key.' });
+      } else if (err.response.status === 429) {
+        return res.status(429).json({ error: 'OpenAI API rate limit exceeded. Please try again later.' });
+      } else if (err.response.status === 400) {
+        return res.status(400).json({ error: 'Bad request to OpenAI API.' });
+      } else if (err.response.status >= 500) {
+        return res.status(502).json({ error: 'OpenAI API is currently unavailable. Please try again later.' });
+      }
+    } else if (err.code === 'ENOTFOUND' || err.code === 'ECONNREFUSED' || err.code === 'ECONNRESET') {
+      // Network error
+      return res.status(503).json({ error: 'Network error: Unable to reach OpenAI API.' });
+    }
+    // Fallback for unknown errors
+    res.status(500).json({ error: 'An unexpected error occurred. Please try again.' });
   }
 };
 EOF
