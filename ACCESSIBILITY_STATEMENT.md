@@ -184,7 +184,7 @@ We aim to comply with accessibility laws and regulations including:
 ### Alternative Contact Methods
 - **General Support**: support@autodevelop.ai (mention accessibility in subject)
 - **Phone Support**: Available for accessibility-specific issues upon request
-- **Mail**: [Your business address] - Attention: Accessibility Team
+- **Mail**: 1234 Main Street, Suite 500, San Francisco, CA 94105, USA - Attention: Accessibility Team
 
 ### Feedback Form
 We maintain a dedicated accessibility feedback form at [URL] for:
