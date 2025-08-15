@@ -4,6 +4,7 @@ import BotUI from './components/BotUI';
 import About from './components/About';
 import Contact from './components/Contact';
 import Privacy from './components/Privacy';
+import TermsOfService from './components/TermsOfService';
 import './App.css';
 
 function Navigation() {
@@ -15,6 +16,7 @@ function Navigation() {
     { path: '/about', label: 'About', icon: '📖' },
     { path: '/contact', label: 'Contact', icon: '📧' },
     { path: '/privacy', label: 'Privacy', icon: '🔒' },
+    { path: '/terms', label: 'Terms', icon: '📋' },
   ];
 
   return (
@@ -92,6 +94,7 @@ export default function App() {
                 <Route path="/about" element={<About />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/privacy" element={<Privacy />} />
+                <Route path="/terms" element={<TermsOfService />} />
               </Routes>
             </div>
           </div>
@@ -110,6 +113,7 @@ export default function App() {
                   <Link to="/about">About</Link>
                   <Link to="/contact">Contact</Link>
                   <Link to="/privacy">Privacy Policy</Link>
+                  <Link to="/terms">Terms of Service</Link>
                 </div>
               </div>
               <div className="footer-section">

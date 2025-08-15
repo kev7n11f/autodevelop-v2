@@ -62,9 +62,23 @@ For more detailed setup instructions, see the frontend and backend README files.
 - **Privacy:** [privacy@autodevelop.ai](mailto:privacy@autodevelop.ai)
 - Or use the [Contact page](./frontend/src/components/Contact.jsx).
 
+## Legal and Compliance
+
+AutoDevelop.ai is committed to legal compliance and user protection. Please review our legal documentation:
+
+- **[Privacy Policy](./frontend/src/components/Privacy.jsx)** - How we collect, use, and protect your data
+- **[Terms of Service](./TERMS_OF_SERVICE.md)** - Complete terms governing platform use
+- **[Cookie Policy](./COOKIE_POLICY.md)** - Information about cookies and tracking
+- **[Acceptable Use Policy](./ACCEPTABLE_USE_POLICY.md)** - Guidelines for appropriate platform use
+- **[Data Processing Agreement](./DATA_PROCESSING_AGREEMENT.md)** - Enterprise data processing terms
+- **[DMCA Policy](./DMCA_POLICY.md)** - Copyright takedown procedures
+- **[API Terms of Service](./API_TERMS_OF_SERVICE.md)** - Terms for API usage
+- **[Security Disclosure Policy](./SECURITY_DISCLOSURE_POLICY.md)** - How to report security issues
+- **[Accessibility Statement](./ACCESSIBILITY_STATEMENT.md)** - Our commitment to accessibility
+
 ## Analytics
 
-Anonymous usage analytics may be collected to improve the platform. For information on privacy, see our [Privacy Policy](./frontend/src/components/Privacy.jsx).
+Vercel Analytics is integrated to provide insights into application usage and performance. The analytics are privacy-focused and cookie-free. For detailed configuration and maintenance information, see the [Vercel Analytics Configuration Guide](./VERCEL_ANALYTICS.md).
 
 ## License
 
@@ -90,4 +104,18 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+```
+
+---
+
+## 🌍 Future Vision
+
+- Modular bot marketplace  
+- Web3 deployment and smart contract automation  
+- Tokenized access and staking  
+- DAO governance for bot evolution  
+- Chain-agnostic support (Ethereum, Solana, etc.)
+
+---
+
 ```
