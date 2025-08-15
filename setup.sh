@@ -93,6 +93,10 @@ EOF
 cat > backend/controllers/botController.js <<'EOF'
 const OpenAI = require('openai');
 
+if (!process.env.OPENAI_API_KEY) {
+  console.error('❌ OPENAI_API_KEY is not set. Please set it in your environment or .env file.');
+  process.exit(1);
+}
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
