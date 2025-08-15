@@ -125,7 +125,16 @@ exports.chat = async (req, res) => {
       temperature: 0.7
     });
 
-    const reply = completion.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response.";
+    let reply;
+    if (!completion.choices || !Array.isArray(completion.choices)) {
+      reply = "Sorry, the AI response format was unexpected (no choices array).";
+    } else if (completion.choices.length === 0) {
+      reply = "Sorry, the AI did not return any response choices.";
+    } else if (!completion.choices[0].message || !completion.choices[0].message.content) {
+      reply = "Sorry, the AI response was missing content.";
+    } else {
+      reply = completion.choices[0].message.content;
+    }
     res.json({ reply });
   } catch (err) {
     console.error('OpenAI API Error:', err);
