@@ -55,7 +55,7 @@ Send your DMCA takedown notice to:
 
 **Alternative Methods:**
 - **Contact Form**: https://autodevelop.ai/contact (select "Legal/DMCA" as subject)
-- **Mail**: [Your company address] - DMCA Agent
+- **Mail**: 1234 Main Street, Suite 500, San Francisco, CA 94105, USA - DMCA Agent
 
 ## Our Response Process
 
