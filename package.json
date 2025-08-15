@@ -6,14 +6,15 @@
     "dev": "concurrently \"nodemon backend/server.js\" \"yarn --cwd frontend dev\"",
     "build": "yarn --cwd frontend build",
     "start": "node backend/server.js",
-    "build:frontend": "cd frontend && yarn build",
-    "preview": "cd frontend && yarn preview"
+    "build:frontend": "yarn --cwd frontend build",
+    "preview": "yarn --cwd frontend preview"
   },
   "dependencies": {
+    "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^4.21.2",
-    "openai": "^5.11.0"
+
   },
   "devDependencies": {
     "concurrently": "^7.6.0",
