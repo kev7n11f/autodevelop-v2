@@ -162,7 +162,7 @@ Significant changes will be communicated with reasonable advance notice.
 
 ## 14. Governing Law and Jurisdiction
 
-This DPA is governed by the same law as the main Terms of Service. Disputes related to data protection will be resolved in accordance with the dispute resolution procedures in the Terms of Service.
+This DPA is governed by the laws of the State of California, United States, without regard to its conflict of law principles. Any disputes arising under or in connection with this DPA will be subject to the exclusive jurisdiction of the courts located in San Francisco County, California, United States.
 
 ## 15. Contact Information
 
