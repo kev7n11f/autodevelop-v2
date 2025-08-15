@@ -156,7 +156,7 @@ For questions about these Terms of Service, please contact us:
 
 - **Email:** legal@autodevelop.ai
 - **Support:** support@autodevelop.ai
-- **Mailing Address:** [Your Business Address]
+- **Mailing Address:** 1234 AI Innovation Drive, Suite 100, San Francisco, CA 94107, USA
 
 ## 16. Severability
 
