@@ -138,7 +138,24 @@ exports.chat = async (req, res) => {
     res.json({ reply });
   } catch (err) {
     console.error('OpenAI API Error:', err);
-    res.status(500).json({ error: 'Sorry, I encountered an error. Please try again.' });
+    // Enhanced error handling for different scenarios
+    if (err.response && err.response.status) {
+      // OpenAI API returned an error response
+      if (err.response.status === 401) {
+        return res.status(401).json({ error: 'Invalid or missing OpenAI API key.' });
+      } else if (err.response.status === 429) {
+        return res.status(429).json({ error: 'OpenAI API rate limit exceeded. Please try again later.' });
+      } else if (err.response.status === 400) {
+        return res.status(400).json({ error: 'Bad request to OpenAI API.' });
+      } else if (err.response.status >= 500) {
+        return res.status(502).json({ error: 'OpenAI API is currently unavailable. Please try again later.' });
+      }
+    } else if (err.code === 'ENOTFOUND' || err.code === 'ECONNREFUSED' || err.code === 'ECONNRESET') {
+      // Network error
+      return res.status(503).json({ error: 'Network error: Unable to reach OpenAI API.' });
+    }
+    // Fallback for unknown errors
+    res.status(500).json({ error: 'An unexpected error occurred. Please try again.' });
   }
 };
 EOF
