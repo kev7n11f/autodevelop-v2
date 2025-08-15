@@ -163,7 +163,7 @@ AutoDevelop.ai qualifies for DMCA safe harbor protection because we:
 - **Name**: AutoDevelop.ai Legal Team
 - **Email**: dmca@autodevelop.ai
 - **Address**: [Your business address]
-- **Phone**: [Your business phone number]
+- **Phone**: +1-555-123-4567
 
 ## International Considerations
 
