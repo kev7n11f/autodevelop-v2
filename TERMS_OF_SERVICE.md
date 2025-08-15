@@ -143,7 +143,7 @@ You agree to indemnify and hold us harmless from any claims, damages, or expense
 ## 14. Governing Law and Dispute Resolution
 
 ### 14.1 Governing Law
-These Terms are governed by the laws of [Your Jurisdiction], without regard to conflict of law principles.
+These Terms are governed by the laws of the State of California, without regard to conflict of law principles.
 
 ### 14.2 Dispute Resolution
 - We encourage resolving disputes through direct communication
