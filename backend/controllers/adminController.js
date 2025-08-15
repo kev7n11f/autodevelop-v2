@@ -1,10 +1,5 @@
 const logger = require('../utils/logger');
 const { getSuspiciousActivity, unblockUser } = require('../utils/abuseMonitor');
-
-// Simple admin authentication (in production, use proper authentication)
-const adminAuth = (req, res, next) => {
-  const adminKey = req.headers['x-admin-key'] || req.query.adminKey;
-  
 const crypto = require('crypto');
 
 // Simple admin authentication (in production, use proper authentication)
