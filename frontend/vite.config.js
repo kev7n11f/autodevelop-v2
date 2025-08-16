@@ -14,6 +14,6 @@ export default defineConfig({
       external: ['@vercel/analytics/react'],
     },
     outDir: 'dist',
-    assetsDir: 'assets',
+    assetsDir: 'assets'
   }
 })
