@@ -10,9 +10,6 @@ export default defineConfig({
     }
   },
   build: {
-    rollupOptions: {
-      external: ['@vercel/analytics/react'],
-    },
     outDir: 'dist',
     assetsDir: 'assets'
   }
