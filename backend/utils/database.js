@@ -66,7 +66,7 @@ class Database {
     return new Promise((resolve, reject) => {
       this.db.run(insertSQL, [email, name, confirmationToken, unsubscribeToken], function(err) {
         if (err) {
-          if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+          if (err.code === 'SQLITE_CONSTRAINT' && err.message.includes('UNIQUE constraint')) {
             reject(new Error('Email already subscribed'));
           } else {
             logger.error('Error adding subscriber:', err);
