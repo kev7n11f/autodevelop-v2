@@ -5,6 +5,7 @@ const compression = require('compression');
 const helmet = require('helmet');
 const apiRoutes = require('./routes/apiRoutes');
 const logger = require('./utils/logger');
+const database = require('./utils/database');
 const { 
   basicRateLimit, 
   speedLimiter, 
@@ -14,6 +15,17 @@ const {
 
 const app = express();
 const port = process.env.PORT || 8080;
+
+// Initialize database connection
+async function initializeDatabase() {
+  try {
+    await database.connect();
+    logger.info('Database initialized successfully');
+  } catch (error) {
+    logger.error('Failed to initialize database:', error);
+    process.exit(1);
+  }
+}
 
 // Trust proxy for accurate IP addresses when behind reverse proxies
 app.set('trust proxy', 1);
@@ -69,18 +81,30 @@ app.use(errorHandler);
 // Graceful shutdown
 process.on('SIGTERM', () => {
   logger.info('SIGTERM received, shutting down gracefully');
+  database.close();
   process.exit(0);
 });
 
 process.on('SIGINT', () => {
   logger.info('SIGINT received, shutting down gracefully');
+  database.close();
   process.exit(0);
 });
 
-app.listen(port, () => {
-  logger.info(`🌐  Server started successfully`, { 
-    port, 
-    nodeEnv: process.env.NODE_ENV || 'development',
-    timestamp: new Date().toISOString()
+// Start server after database initialization
+async function startServer() {
+  await initializeDatabase();
+  
+  app.listen(port, () => {
+    logger.info(`🌐  Server started successfully`, { 
+      port, 
+      nodeEnv: process.env.NODE_ENV || 'development',
+      timestamp: new Date().toISOString()
+    });
   });
+}
+
+startServer().catch((error) => {
+  logger.error('Failed to start server:', error);
+  process.exit(1);
 });
