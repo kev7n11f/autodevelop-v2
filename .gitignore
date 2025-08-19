@@ -9,6 +9,9 @@ frontend/dist
 # Vercel
 .vercel
 
+# Database
+backend/mailing_list.db
+
 # Logs and monitoring data
 logs/
 *.log
