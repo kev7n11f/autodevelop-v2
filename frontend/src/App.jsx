@@ -1,10 +1,11 @@
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import BotUI from './components/BotUI';
 import About from './components/About';
 import Contact from './components/Contact';
 import Privacy from './components/Privacy';
 import TermsOfService from './components/TermsOfService';
+import MailingListModal from './components/MailingListModal';
 import './App.css';
 
 function Navigation() {
@@ -68,6 +69,32 @@ function FloatingActionButton() {
 }
 
 export default function App() {
+  const [isMailingModalOpen, setIsMailingModalOpen] = useState(false);
+
+  // Check for URL parameters for confirmation states
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('confirmed') === 'true') {
+      // Show success message - you could add a toast notification here
+      console.log('Email confirmed successfully!');
+    } else if (urlParams.get('unsubscribed') === 'true') {
+      console.log('Successfully unsubscribed');
+    }
+  }, []);
+
+  // Show modal after a delay for first-time visitors
+  useEffect(() => {
+    const hasSeenModal = localStorage.getItem('hasSeenMailingModal');
+    if (!hasSeenModal) {
+      const timer = setTimeout(() => {
+        setIsMailingModalOpen(true);
+        localStorage.setItem('hasSeenMailingModal', 'true');
+      }, 3000); // Show after 3 seconds
+      
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
   return (
     <Router>
       <div className="app">
@@ -83,6 +110,14 @@ export default function App() {
                 <p className="hero-subtitle">
                   Use AI to bring your vision to life — step by step, powered by you.
                 </p>
+                <div className="hero-actions">
+                  <button 
+                    className="btn btn-secondary"
+                    onClick={() => setIsMailingModalOpen(true)}
+                  >
+                    📧 Get Updates
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -120,6 +155,13 @@ export default function App() {
                 <h4>Connect</h4>
                 <p>Ready to build something amazing?</p>
                 <Link to="/contact" className="btn btn-primary">Get Started</Link>
+                <button 
+                  className="btn btn-outline"
+                  onClick={() => setIsMailingModalOpen(true)}
+                  style={{ marginLeft: 'var(--space-2)' }}
+                >
+                  Subscribe to Updates
+                </button>
               </div>
             </div>
             <div className="footer-bottom">
@@ -129,6 +171,11 @@ export default function App() {
         </footer>
 
         <FloatingActionButton />
+        
+        <MailingListModal 
+          isOpen={isMailingModalOpen}
+          onClose={() => setIsMailingModalOpen(false)}
+        />
       </div>
     </Router>
   );
