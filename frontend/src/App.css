@@ -172,6 +172,15 @@
   line-height: 1.6;
 }
 
+.hero-actions {
+  margin-top: var(--space-8);
+  display: flex;
+  gap: var(--space-4);
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 /* Main Content */
 .main-content {
   flex: 1;
