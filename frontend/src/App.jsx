@@ -1,5 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import BotUI from './components/BotUI';
 import About from './components/About';
 import Contact from './components/Contact';
@@ -178,6 +180,9 @@ export default function App() {
           isOpen={isMailingModalOpen}
           onClose={() => setIsMailingModalOpen(false)}
         />
+        
+        <Analytics />
+        <SpeedInsights />
       </div>
     </Router>
   );
