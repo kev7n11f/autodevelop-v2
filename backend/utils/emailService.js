@@ -183,6 +183,13 @@ class EmailService {
       // Simulate email sending in development
       logger.info(`[SIMULATED] ${type} email would be sent to: ${msg.to}`);
       logger.info(`Subject: ${msg.subject}`);
+      if (type === 'payment-success' && msg.html) {
+        // Extract and log the next billing date from the email content
+        const match = msg.html.match(/Next Billing Date:<\/span>\s*<span class="detail-value">([^<]+)<\/span>/);
+        if (match) {
+          logger.info(`Next Billing Date in email: ${match[1]}`);
+        }
+      }
       return { success: true, simulated: true };
     }
 

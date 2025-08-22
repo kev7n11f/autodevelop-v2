@@ -1,6 +1,7 @@
 const database = require('../utils/database');
 const emailService = require('../utils/emailService');
 const logger = require('../utils/logger');
+const { updateSubscriptionPeriodAfterPayment } = require('../utils/dateUtils');
 
 // Input validation helpers
 const validatePaymentData = (data) => {
@@ -97,12 +98,31 @@ const processPaymentEvent = async (req, res) => {
     });
 
     // Get subscription and user info for email
-    const subscription = subscriptionId ? await database.getPaymentSubscription(userId) : null;
+    const subscription = await database.getPaymentSubscription(userId);
     
-    // Send appropriate notification email
-    if (subscription && subscription.email) {
-      await sendPaymentNotification(event, subscription);
-      await database.markNotificationSent(event.id);
+    // For successful payments, update the subscription billing dates
+    if (subscription && eventType === 'payment_success') {
+      logger.info(`Updating subscription billing dates for user: ${userId}`);
+      const updatedDates = updateSubscriptionPeriodAfterPayment(subscription);
+      logger.info(`New billing dates calculated:`, updatedDates);
+      
+      await database.updatePaymentSubscriptionByUserId(userId, updatedDates);
+      
+      // Get the updated subscription for email notification
+      const updatedSubscription = await database.getPaymentSubscription(userId);
+      logger.info(`Updated subscription next billing date: ${updatedSubscription.next_billing_date}`);
+      
+      // Send appropriate notification email with updated subscription data
+      if (updatedSubscription && updatedSubscription.email) {
+        await sendPaymentNotification(event, updatedSubscription);
+        await database.markNotificationSent(event.id);
+      }
+    } else {
+      // Send appropriate notification email for non-payment-success events
+      if (subscription && subscription.email) {
+        await sendPaymentNotification(event, subscription);
+        await database.markNotificationSent(event.id);
+      }
     }
 
     logger.info(`Payment event processed: ${eventType} for user ${userId}`);
