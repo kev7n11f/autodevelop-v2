@@ -1,6 +1,13 @@
 const router = require('express').Router();
 const { chat } = require('../controllers/botController');
-const { getSuspiciousActivity, unblockUser, getSystemStatus } = require('../controllers/adminController');
+const { 
+  getSuspiciousActivity, 
+  unblockUser, 
+  getSystemStatus, 
+  resetUserUsageAdmin, 
+  getUsageStatsAdmin, 
+  getUserDiagnosticAdmin 
+} = require('../controllers/adminController');
 const { 
   subscribe, 
   confirmSubscription, 
@@ -13,7 +20,9 @@ const {
   processPaymentEvent,
   getSubscription,
   processPendingNotifications,
-  checkUpcomingRenewals
+  checkUpcomingRenewals,
+  createStripeCheckoutSession,
+  createBillingPortalSession
 } = require('../controllers/paymentController');
 
 // Chat endpoint
@@ -32,10 +41,15 @@ router.post('/payments/webhook', processPaymentEvent);
 router.get('/payments/subscription/:userId', getSubscription);
 router.post('/payments/process-notifications', processPendingNotifications);
 router.post('/payments/check-renewals', checkUpcomingRenewals);
+router.post('/payments/stripe/checkout', createStripeCheckoutSession);
+router.post('/payments/stripe/portal', createBillingPortalSession);
 
-// Admin endpoints for monitoring and management
+// Admin endpoints
 router.get('/admin/suspicious-activity', getSuspiciousActivity);
 router.post('/admin/unblock-user', unblockUser);
 router.get('/admin/status', getSystemStatus);
+router.post('/admin/usage/reset', resetUserUsageAdmin);
+router.get('/admin/usage/stats', getUsageStatsAdmin);
+router.get('/admin/diagnostic/:userId', getUserDiagnosticAdmin);
 
 module.exports = router;

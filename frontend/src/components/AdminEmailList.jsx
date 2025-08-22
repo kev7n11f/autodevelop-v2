@@ -12,7 +12,8 @@ export default function AdminEmailList() {
     setError(null);
     
     try {
-      const response = await fetch('/api/payments/mailing-list/stats', {
+      // Fixed endpoint path (removed erroneous 'payments' segment)
+      const response = await fetch('/api/mailing-list/stats', {
         headers: {
           'x-admin-key': key
         }

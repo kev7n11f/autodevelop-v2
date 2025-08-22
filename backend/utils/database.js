@@ -52,7 +52,13 @@ class Database {
         currency TEXT DEFAULT 'USD',
         payment_method TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        stripe_customer_id TEXT,
+        stripe_subscription_id TEXT,
+        stripe_price_id TEXT,
+        stripe_product_id TEXT,
+        plan_interval TEXT,
+        cancel_at_period_end BOOLEAN
       )
     `;
 
@@ -74,16 +80,66 @@ class Database {
       )
     `;
 
+    // usage counters now include monthly tracking
+    const createUsageCountersTableSQL = `
+      CREATE TABLE IF NOT EXISTS usage_counters (
+        user_id TEXT PRIMARY KEY,
+        message_count INTEGER DEFAULT 0,
+        period_start DATETIME NOT NULL,
+        monthly_message_count INTEGER DEFAULT 0,
+        monthly_period_start DATETIME NOT NULL
+      )
+    `;
+
+    // audit log of individual usage events (compressed later if needed)
+    const createUsageEventsTableSQL = `
+      CREATE TABLE IF NOT EXISTS usage_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        event_type TEXT NOT NULL CHECK(event_type IN ('message_used','usage_reset','limit_block','diagnostic_access')),
+        daily_count INTEGER,
+        monthly_count INTEGER,
+        delta INTEGER,
+        ip TEXT,
+        source TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        meta TEXT
+      )
+    `;
+
+    // raw Stripe events for idempotency + replay
+    const createStripeEventsTableSQL = `
+      CREATE TABLE IF NOT EXISTS stripe_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        stripe_event_id TEXT UNIQUE NOT NULL,
+        type TEXT NOT NULL,
+        payload_json TEXT NOT NULL,
+        received_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        processed_at DATETIME,
+        status TEXT DEFAULT 'received' CHECK(status IN ('received','processed','error')),
+        error_message TEXT
+      )
+    `;
+
     try {
       await this.runQuery(createMailingListTableSQL);
       logger.info('Mailing list table initialized');
-      
+      // NEW: ensure optional improvement columns & index
+      await this.ensureMailingListExtendedColumns();
+      await this.runQuery(`CREATE INDEX IF NOT EXISTS idx_mailing_list_email ON mailing_list_subscribers(email)`);
       await this.runQuery(createPaymentSubscriptionsTableSQL);
       logger.info('Payment subscriptions table initialized');
-      
+      await this.ensureStripeColumns();
       await this.runQuery(createPaymentEventsTableSQL);
       logger.info('Payment events table initialized');
-      
+      await this.runQuery(createUsageCountersTableSQL);
+      logger.info('Usage counters table initialized');
+      await this.runQuery(createUsageEventsTableSQL);
+      logger.info('Usage events audit table initialized');
+      await this.runQuery(createStripeEventsTableSQL);
+      logger.info('Stripe events table initialized');
+      // ensure columns on existing usage_counters
+      await this.ensureUsageExtendedColumns();
       return Promise.resolve();
     } catch (err) {
       logger.error('Error creating tables:', err);
@@ -107,17 +163,149 @@ class Database {
     return crypto.randomBytes(32).toString('hex');
   }
 
-  async addSubscriber(email, name) {
+  async ensureMailingListExtendedColumns() {
+    const needed = {
+      last_confirmation_sent: 'DATETIME',
+      last_unsubscribe_request: 'DATETIME',
+      last_subscribe_attempt: 'DATETIME',
+      subscribe_attempts: 'INTEGER DEFAULT 0',
+      confirmed_at: 'DATETIME',
+      unsubscribed_at: 'DATETIME',
+      ip: 'TEXT',
+      user_agent: 'TEXT',
+      source: 'TEXT',
+      consent_version: 'TEXT'
+    };
+    const info = await new Promise((resolve) => {
+      this.db.all(`PRAGMA table_info(mailing_list_subscribers)`, [], (err, rows) => resolve(rows || []));
+    });
+    const existingCols = new Set(info.map(r => r.name));
+    for (const [col, ddl] of Object.entries(needed)) {
+      if (!existingCols.has(col)) {
+        await this.runQuery(`ALTER TABLE mailing_list_subscribers ADD COLUMN ${col} ${ddl}`);
+      }
+    }
+  }
+
+  async ensureStripeColumns() {
+    // Add missing Stripe columns defensively
+    const columns = [
+      'stripe_customer_id','stripe_subscription_id','stripe_price_id','stripe_product_id','plan_interval','cancel_at_period_end'
+    ];
+    for (const col of columns) {
+      await new Promise((resolve) => {
+        this.db.get(`PRAGMA table_info(payment_subscriptions)`, [], (err, rows) => {
+          if (err) return resolve();
+          const exists = rows.some(r => r.name === col);
+            if (!exists) {
+              this.db.run(`ALTER TABLE payment_subscriptions ADD COLUMN ${col} TEXT`, [], () => resolve());
+            } else resolve();
+        });
+      });
+    }
+  }
+
+  async ensureUsageExtendedColumns() {
+    // monthly_message_count & monthly_period_start might be missing
+    const needed = ['monthly_message_count','monthly_period_start'];
+    const info = await new Promise((resolve) => {
+      this.db.get(`PRAGMA table_info(usage_counters)`, [], (err, rows) => resolve(rows));
+    });
+    for (const c of needed) {
+      const exists = (Array.isArray(info) ? info : []).some(r => r.name === c);
+      if (!exists) {
+        const ddl = c === 'monthly_message_count' ? 'INTEGER DEFAULT 0' : 'DATETIME';
+        await this.runQuery(`ALTER TABLE usage_counters ADD COLUMN ${c} ${ddl}`);
+        if (c === 'monthly_period_start') {
+          await this.runQuery(`UPDATE usage_counters SET monthly_period_start = COALESCE(period_start, CURRENT_TIMESTAMP)`);
+        }
+      }
+    }
+  }
+
+  async getSubscriberByEmail(email) {
+    const sql = `SELECT * FROM mailing_list_subscribers WHERE email = ?`;
+    return new Promise((resolve, reject) => {
+      this.db.get(sql, [email], (err, row) => err ? reject(err) : resolve(row));
+    });
+  }
+
+  async updateSubscriberTokens(email) {
+    const newConfirmation = this.generateToken();
+    const newUnsub = this.generateToken();
+    const sql = `UPDATE mailing_list_subscribers SET confirmation_token = ?, unsubscribe_token = ?, last_confirmation_sent = CURRENT_TIMESTAMP WHERE email = ?`;
+    await this.runQuery(sql, [newConfirmation, newUnsub, email]);
+    return { confirmationToken: newConfirmation, unsubscribeToken: newUnsub };
+  }
+
+  async recordConfirmationEmailSent(email) {
+    const sql = `UPDATE mailing_list_subscribers SET last_confirmation_sent = CURRENT_TIMESTAMP WHERE email = ?`;
+    await this.runQuery(sql, [email]);
+  }
+
+  async recordUnsubscribeRequest(email) {
+    const sql = `UPDATE mailing_list_subscribers SET last_unsubscribe_request = CURRENT_TIMESTAMP WHERE email = ?`;
+    await this.runQuery(sql, [email]);
+  }
+
+  async recordSubscribeAttempt(email) {
+    const sql = `UPDATE mailing_list_subscribers SET last_subscribe_attempt = CURRENT_TIMESTAMP, subscribe_attempts = COALESCE(subscribe_attempts,0) + 1 WHERE email = ?`;
+    await this.runQuery(sql, [email]);
+  }
+
+  async recordSubscriberMeta(email, { ip, userAgent, source, consentVersion } = {}) {
+    const fields = [];
+    const values = [];
+    if (ip) { fields.push('ip = ?'); values.push(ip); }
+    if (userAgent) { fields.push('user_agent = ?'); values.push(userAgent); }
+    if (source) { fields.push('source = ?'); values.push(source); }
+    if (consentVersion) { fields.push('consent_version = ?'); values.push(consentVersion); }
+    if (!fields.length) return;
+    const sql = `UPDATE mailing_list_subscribers SET ${fields.join(', ')} WHERE email = ?`;
+    values.push(email);
+    await this.runQuery(sql, values);
+  }
+
+  isActionRateLimited(subscriber, action, minIntervalMs) {
+    if (!subscriber) return false;
+    const column = action === 'confirmation' ? 'last_confirmation_sent' : action === 'unsubscribe' ? 'last_unsubscribe_request' : action === 'subscribe' ? 'last_subscribe_attempt' : null;
+    if (!column || !subscriber[column]) return false;
+    const last = new Date(subscriber[column]);
+    return (Date.now() - last.getTime()) < minIntervalMs;
+  }
+
+  async addSubscriber(email, name, { ip, userAgent, source = 'ui', consentVersion } = {}) {
+    const existing = await this.getSubscriberByEmail(email).catch(() => null);
     const confirmationToken = this.generateToken();
     const unsubscribeToken = this.generateToken();
 
+    // Resubscribe flow for previously unsubscribed users
+    if (existing && existing.status === 'unsubscribed') {
+      const sql = `UPDATE mailing_list_subscribers SET name = ?, status = 'pending', confirmed = FALSE, confirmation_token = ?, unsubscribe_token = ?, subscribed_at = CURRENT_TIMESTAMP, confirmed_at = NULL, unsubscribed_at = NULL, last_subscribe_attempt = CURRENT_TIMESTAMP, subscribe_attempts = COALESCE(subscribe_attempts,0) + 1, ip = COALESCE(?, ip), user_agent = COALESCE(?, user_agent), source = COALESCE(?, source), consent_version = COALESCE(?, consent_version) WHERE email = ?`;
+      await this.runQuery(sql, [name, confirmationToken, unsubscribeToken, ip, userAgent, source, consentVersion, email]);
+      logger.info(`Resubscribe initiated for: ${email}`);
+      return { id: existing.id, email, name, confirmationToken, unsubscribeToken, status: 'pending', resubscribed: true };
+    }
+
+    // Duplicate pending subscription -> return hint instead of hard error
+    if (existing && existing.status === 'pending') {
+      await this.recordSubscribeAttempt(existing.email);
+      return { duplicatePending: true, email, name: existing.name, status: 'pending', needsConfirmation: true, last_confirmation_sent: existing.last_confirmation_sent };
+    }
+
+    // Already confirmed
+    if (existing && existing.status === 'confirmed') {
+      await this.recordSubscribeAttempt(existing.email);
+      throw new Error('Email already subscribed');
+    }
+
     const insertSQL = `
-      INSERT INTO mailing_list_subscribers (email, name, confirmation_token, unsubscribe_token)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO mailing_list_subscribers (email, name, confirmation_token, unsubscribe_token, last_subscribe_attempt, subscribe_attempts, ip, user_agent, source, consent_version)
+      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, 1, ?, ?, ?, ?)
     `;
 
     return new Promise((resolve, reject) => {
-      this.db.run(insertSQL, [email, name, confirmationToken, unsubscribeToken], function(err) {
+      this.db.run(insertSQL, [email, name, confirmationToken, unsubscribeToken, ip, userAgent, source, consentVersion], function(err) {
         if (err) {
           if (err.code === 'SQLITE_CONSTRAINT' && err.message.includes('UNIQUE constraint')) {
             reject(new Error('Email already subscribed'));
@@ -132,7 +320,8 @@ class Database {
             email,
             name,
             confirmationToken,
-            unsubscribeToken
+            unsubscribeToken,
+            status: 'pending'
           });
         }
       });
@@ -142,7 +331,7 @@ class Database {
   async confirmSubscriber(token) {
     const updateSQL = `
       UPDATE mailing_list_subscribers 
-      SET confirmed = TRUE, status = 'confirmed'
+      SET confirmed = TRUE, status = 'confirmed', confirmed_at = CURRENT_TIMESTAMP
       WHERE confirmation_token = ? AND status = 'pending'
     `;
 
@@ -164,8 +353,8 @@ class Database {
   async unsubscribeUser(token) {
     const updateSQL = `
       UPDATE mailing_list_subscribers 
-      SET status = 'unsubscribed'
-      WHERE unsubscribe_token = ?
+      SET status = 'unsubscribed', unsubscribed_at = CURRENT_TIMESTAMP
+      WHERE unsubscribe_token = ? AND status != 'unsubscribed'
     `;
 
     return new Promise((resolve, reject) => {
@@ -437,16 +626,157 @@ class Database {
     });
   }
 
-  close() {
-    if (this.db) {
-      this.db.close((err) => {
-        if (err) {
-          logger.error('Error closing database:', err);
-        } else {
-          logger.info('Database connection closed');
-        }
+  // Persistent usage tracking methods
+  async getUserUsage(userId) {
+    const sql = `SELECT user_id, message_count, period_start, monthly_message_count, monthly_period_start FROM usage_counters WHERE user_id = ?`;
+    return new Promise((resolve, reject) => {
+      this.db.get(sql, [userId], (err, row) => {
+        if (err) return reject(err);
+        resolve(row || null);
+      });
+    });
+  }
+
+  async resetUserUsage(userId, scope = 'daily') {
+    const now = new Date().toISOString();
+    if (scope === 'all') {
+      const sql = `REPLACE INTO usage_counters (user_id, message_count, period_start, monthly_message_count, monthly_period_start) VALUES (?, 0, ?, 0, ?)`;
+      return new Promise((resolve, reject) => {
+        this.db.run(sql, [userId, now, now], function(err) {
+          if (err) return reject(err);
+          resolve({ userId, message_count: 0, period_start: now, monthly_message_count: 0, monthly_period_start: now });
+        });
       });
     }
+    if (scope === 'monthly') {
+      const sql = `UPDATE usage_counters SET monthly_message_count = 0, monthly_period_start = ? WHERE user_id = ?`;
+      return new Promise((resolve, reject) => {
+        this.db.run(sql, [now, userId], function(err) {
+          if (err) return reject(err);
+          resolve();
+        });
+      });
+    }
+    // daily
+    const sql = `UPDATE usage_counters SET message_count = 0, period_start = ? WHERE user_id = ?`;
+    return new Promise((resolve, reject) => {
+      this.db.run(sql, [now, userId], function(err) {
+        if (err) return reject(err);
+        resolve();
+      });
+    });
+  }
+
+  async incrementUserUsage(userId, period = 'day') {
+    const existing = await this.getUserUsage(userId);
+    const now = new Date();
+    if (existing) {
+      const periodStart = new Date(existing.period_start);
+      const monthStart = new Date(existing.monthly_period_start || existing.period_start);
+      if (this._isPeriodExpired(periodStart, now, 'day')) {
+        await this.resetUserUsage(userId, 'daily');
+      }
+      if (this._isPeriodExpired(monthStart, now, 'month')) {
+        await this.resetUserUsage(userId, 'monthly');
+      }
+    } else {
+      // create baseline row
+      const baseline = `INSERT OR REPLACE INTO usage_counters (user_id, message_count, period_start, monthly_message_count, monthly_period_start) VALUES (?, 0, ?, 0, ?)`;
+      const iso = new Date().toISOString();
+      await this.runQuery(baseline, [userId, iso, iso]);
+    }
+    const updateSQL = `UPDATE usage_counters SET message_count = message_count + 1, monthly_message_count = monthly_message_count + 1 WHERE user_id = ?`;
+    await new Promise((resolve, reject) => {
+      this.db.run(updateSQL, [userId], function(err) { if (err) return reject(err); resolve(); });
+    });
+    const updated = await this.getUserUsage(userId);
+    return { messageCount: updated.message_count, periodStart: updated.period_start, monthlyCount: updated.monthly_message_count };
+  }
+
+  async applyUsageDeltas(deltas) {
+    // deltas: [{ userId, dailyDelta, monthlyDelta }]
+    if (!deltas.length) return;
+    await this.runQuery('BEGIN TRANSACTION');
+    try {
+      for (const d of deltas) {
+        const ensure = `INSERT OR IGNORE INTO usage_counters (user_id, message_count, period_start, monthly_message_count, monthly_period_start) VALUES (?,0, CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP)`;
+        await this.runQuery(ensure, [d.userId]);
+        const update = `UPDATE usage_counters SET message_count = message_count + ?, monthly_message_count = monthly_message_count + ? WHERE user_id = ?`;
+        await this.runQuery(update, [d.dailyDelta || 0, d.monthlyDelta || 0, d.userId]);
+      }
+      await this.runQuery('COMMIT');
+    } catch (e) {
+      await this.runQuery('ROLLBACK');
+      throw e;
+    }
+  }
+
+  async logUsageEvent({ userId, eventType, delta = 0, dailyCount, monthlyCount, ip, source = 'chat', meta = {} }) {
+    const sql = `INSERT INTO usage_events (user_id, event_type, daily_count, monthly_count, delta, ip, source, meta) VALUES (?,?,?,?,?,?,?,?)`;
+    try {
+      await this.runQuery(sql, [userId, eventType, dailyCount, monthlyCount, delta, ip, source, JSON.stringify(meta)]);
+    } catch (e) {
+      logger.warn('Failed to log usage event', { userId, eventType, error: e.message });
+    }
+  }
+
+  async getRecentUsageEvents(limit = 50, userId) {
+    let sql = `SELECT * FROM usage_events`;
+    const params = [];
+    if (userId) { sql += ' WHERE user_id = ?'; params.push(userId); }
+    sql += ' ORDER BY id DESC LIMIT ?'; params.push(limit);
+    return new Promise((resolve, reject) => {
+      this.db.all(sql, params, (err, rows) => err ? reject(err) : resolve(rows));
+    });
+  }
+
+  async getUsageStats() {
+    const totals = await new Promise((resolve) => {
+      this.db.get(`SELECT COUNT(*) as users, SUM(message_count) as daily_messages, SUM(monthly_message_count) as monthly_messages FROM usage_counters`, [], (err, row) => {
+        if (err) return resolve({ users:0,daily_messages:0,monthly_messages:0 });
+        resolve(row);
+      });
+    });
+    const subs = await new Promise((resolve) => {
+      this.db.get(`SELECT COUNT(*) as active_subscriptions, SUM(amount) as mrr FROM payment_subscriptions WHERE status IN ('active','trial')`, [], (err, row) => {
+        if (err) return resolve({ active_subscriptions: 0, mrr: 0 });
+        resolve(row);
+      });
+    });
+    return {
+      users: totals.users || 0,
+      daily_messages: totals.daily_messages || 0,
+      monthly_messages: totals.monthly_messages || 0,
+      active_subscriptions: subs.active_subscriptions || 0,
+      mrr: subs.mrr || 0,
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  async getUserDiagnostic(userId) {
+    const usage = await this.getUserUsage(userId).catch(() => null);
+    const subscription = await this.getPaymentSubscription(userId).catch(() => null);
+    const recentEvents = await this.getRecentUsageEvents(25, userId).catch(() => []);
+    return {
+      userId,
+      usage: usage ? {
+        daily: usage.message_count,
+        daily_period_start: usage.period_start,
+        monthly: usage.monthly_message_count,
+        monthly_period_start: usage.monthly_period_start
+      } : null,
+      subscription: subscription ? {
+        plan: subscription.plan_type,
+        status: subscription.status,
+        current_period_start: subscription.current_period_start,
+        current_period_end: subscription.current_period_end,
+        next_billing_date: subscription.next_billing_date,
+        amount: subscription.amount,
+        currency: subscription.currency
+      } : null,
+      recentUsageEvents: recentEvents,
+      generated_at: new Date().toISOString()
+    };
   }
 }
 
