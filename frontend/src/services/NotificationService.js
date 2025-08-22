@@ -2,24 +2,29 @@
 
 class NotificationService {
   constructor() {
-    // Use environment variable if available, otherwise fallback to localhost
-    this.apiBase = (typeof process !== 'undefined' && process.env?.REACT_APP_API_URL) || 'http://localhost:8080/api';
+    // Use relative URLs to work with Vite proxy configuration
+    // In development, Vite will proxy /api requests to the backend
+    // In production, the backend should serve the API endpoints
+    this.apiBase = '/api';
   }
 
   // Get user's subscription status
   async getSubscription(userId) {
     try {
       const response = await fetch(`${this.apiBase}/payments/subscription/${userId}`);
-      const data = await response.json();
       
-      if (response.ok) {
-        return data.subscription;
-      } else {
-        console.error('Failed to get subscription:', data.error);
+      // Check if the response is ok and has content
+      if (!response.ok) {
+        // Log error but don't throw - this allows the app to continue functioning
+        console.warn(`Subscription fetch failed with status ${response.status}:`, response.statusText);
         return null;
       }
+      
+      const data = await response.json();
+      return data.subscription;
     } catch (error) {
-      console.error('Error fetching subscription:', error);
+      // Network error or JSON parsing error - handle gracefully
+      console.warn('Error fetching subscription (this is expected in development without auth):', error.message);
       return null;
     }
   }
@@ -35,13 +40,13 @@ class NotificationService {
         body: JSON.stringify(subscriptionData),
       });
       
-      const data = await response.json();
-      
-      if (response.ok) {
-        return data.subscription;
-      } else {
-        throw new Error(data.details || 'Failed to create subscription');
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({ error: 'Network error' }));
+        throw new Error(data.details || data.error || `Request failed with status ${response.status}`);
       }
+      
+      const data = await response.json();
+      return data.subscription;
     } catch (error) {
       console.error('Error creating subscription:', error);
       throw error;
@@ -59,15 +64,15 @@ class NotificationService {
         body: JSON.stringify(eventData),
       });
       
-      const data = await response.json();
-      
-      if (response.ok) {
-        return data;
-      } else {
-        throw new Error(data.details || 'Failed to process payment event');
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({ error: 'Network error' }));
+        throw new Error(data.details || data.error || `Request failed with status ${response.status}`);
       }
+      
+      const data = await response.json();
+      return data;
     } catch (error) {
-      console.error('Error simulating payment event:', error);
+      console.warn('Error simulating payment event (this may be expected in development):', error.message);
       throw error;
     }
   }
