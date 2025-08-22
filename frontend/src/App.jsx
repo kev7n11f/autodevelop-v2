@@ -9,6 +9,7 @@ import Privacy from './components/Privacy';
 import TermsOfService from './components/TermsOfService';
 import MailingListModal from './components/MailingListModal';
 import NotificationBar from './components/NotificationBar';
+import AdminEmailList from './components/AdminEmailList';
 import './App.css';
 
 function Navigation() {
@@ -134,6 +135,7 @@ export default function App() {
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/terms" element={<TermsOfService />} />
+                <Route path="/admin/email-list" element={<AdminEmailList />} />
               </Routes>
             </div>
           </div>
