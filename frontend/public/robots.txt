@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://autodevelop.ai/sitemap.xml

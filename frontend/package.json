@@ -16,6 +16,7 @@
     "@vercel/speed-insights": "^1.2.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-helmet": "^6.1.0",
     "react-router-dom": "^7.7.1",
     "vite": "^7.0.4"
   },

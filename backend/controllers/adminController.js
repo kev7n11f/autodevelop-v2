@@ -1,6 +1,7 @@
 const logger = require('../utils/logger');
 const { getSuspiciousActivity, unblockUser } = require('../utils/abuseMonitor');
 const crypto = require('crypto');
+const database = require('../utils/database');
 
 // Simple admin authentication (in production, use proper authentication)
 const adminAuth = (req, res, next) => {
@@ -8,7 +9,7 @@ const adminAuth = (req, res, next) => {
   const expectedKey = process.env.ADMIN_KEY;
 
   // Both keys must be present and strings
-  if (typeof adminKey !== 'string' || typeof expectedKey !== 'string') {
+  if (typeof adminKey !== 'string' || typeof expectedKey !== 'string' || adminKey !== expectedKey) {
     logger.warn('Unauthorized admin access attempt', {
       ip: req.ip,
       userAgent: req.get('User-Agent'),
@@ -93,10 +94,11 @@ exports.unblockUser = [adminAuth, (req, res) => {
 }];
 
 // Get system status and metrics
-exports.getSystemStatus = [adminAuth, (req, res) => {
+exports.getSystemStatus = [adminAuth, async (req, res) => {
   try {
     const uptime = process.uptime();
     const memoryUsage = process.memoryUsage();
+    const usageStats = await database.getUsageStats();
     
     const status = {
       system: {
@@ -112,6 +114,7 @@ exports.getSystemStatus = [adminAuth, (req, res) => {
         platform: process.platform,
         pid: process.pid
       },
+      usage: usageStats,
       security: getSuspiciousActivity(),
       timestamp: new Date().toISOString()
     };
@@ -135,5 +138,49 @@ exports.getSystemStatus = [adminAuth, (req, res) => {
       error: 'Failed to generate system status',
       message: 'Please try again or check server logs'
     });
+  }
+}];
+
+// Reset user usage (daily / monthly / all)
+exports.resetUserUsageAdmin = [adminAuth, async (req, res) => {
+  try {
+    const { userId, scope = 'daily' } = req.body;
+    
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+    if (!['daily','monthly','all'].includes(scope)) return res.status(400).json({ error: 'Invalid scope' });
+    
+    await database.resetUserUsage(userId, scope === 'all' ? 'all' : scope);
+    await database.logUsageEvent({ userId, eventType: 'usage_reset', ip: req.ip, source: 'admin', meta: { scope } });
+    
+    res.json({ success: true, message: `Usage reset (${scope}) for ${userId}` });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to reset usage', details: e.message });
+  }
+}];
+
+// Admin usage stats
+exports.getUsageStatsAdmin = [adminAuth, async (req, res) => {
+  try {
+    const stats = await database.getUsageStats();
+    
+    res.json({ success: true, stats });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to get stats', details: e.message });
+  }
+}];
+
+// Diagnostic endpoint per user
+exports.getUserDiagnosticAdmin = [adminAuth, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+    
+    const diag = await database.getUserDiagnostic(userId);
+    await database.logUsageEvent({ userId, eventType: 'diagnostic_access', ip: req.ip, source: 'admin' });
+    
+    res.json({ success: true, diagnostic: diag });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to fetch diagnostic', details: e.message });
   }
 }];

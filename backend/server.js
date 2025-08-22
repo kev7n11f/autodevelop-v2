@@ -12,6 +12,11 @@ const {
   requestLogger, 
   errorHandler 
 } = require('./middleware/security');
+const { 
+  createStripeCheckoutSession,
+  createBillingPortalSession,
+  stripeWebhook
+} = require('./controllers/paymentController');
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -44,6 +49,8 @@ app.use(helmet({
 }));
 app.use(compression());
 app.use(cors());
+// Stripe webhook needs raw body BEFORE express.json
+app.post('/stripe/webhook', express.raw({ type: 'application/json' }), stripeWebhook);
 app.use(express.json({ limit: '10mb' }));
 
 // Logging and monitoring
