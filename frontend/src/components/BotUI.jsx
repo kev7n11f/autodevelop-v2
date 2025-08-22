@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import './BotUI.css';
 import EnhancedMessageBubble from './EnhancedMessageBubble';
 import { 
@@ -25,6 +25,7 @@ export default function BotUI() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [checkingSubscription, setCheckingSubscription] = useState(false);
   const messagesEndRef = useRef(null);
+  const liveRegionRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -32,11 +33,15 @@ export default function BotUI() {
 
   useEffect(() => {
     scrollToBottom();
+    // Accessibility: announce latest bot message
+    const last = log[log.length - 1];
+    if (last && last.from === 'bot' && liveRegionRef.current) {
+      liveRegionRef.current.textContent = last.text?.slice(0, 300) || '';
+    }
   }, [log]);
 
   // Fetch subscription status when user changes or authenticates
-  useEffect(() => {
-    const fetchSubscription = async () => {
+  const fetchSubscription = useCallback(async () => {
       if (!isAuthenticated || !user?.id) {
         setIsSubscribed(false);
         return;
@@ -60,9 +65,22 @@ export default function BotUI() {
       } finally {
         setCheckingSubscription(false);
       }
-    };
-    fetchSubscription();
-  }, [isAuthenticated, user?.id]);
+    }, [isAuthenticated, user?.id]);
+
+  useEffect(() => { fetchSubscription(); }, [fetchSubscription]);
+
+  // Detect Stripe checkout success (session_id param) and refresh subscription
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get('session_id');
+    if (sessionId) {
+      // Remove param silently
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+      // Re-check subscription after short delay (Stripe webhook processing time)
+      setTimeout(() => fetchSubscription(), 1500);
+    }
+  }, [fetchSubscription]);
 
   const startCheckout = async () => {
     if (!isAuthenticated) {
@@ -235,30 +253,8 @@ function TodoApp() {
     </div>
   );
 }
-    // Track user message count with gating logic
-    setUserMessageCount(count => {
-      const newCount = count + 1;
-      if (!isSubscribed && newCount > FREE_MESSAGE_LIMIT && !paywallDismissed) {
-        setSubscriptionRequired(true);
-        const prompt = getPaywallPrompt();
-        // Augment actions based on auth state
-        const augmented = { ...prompt };
-        if (!isAuthenticated) {
-          augmented.actions = [
-            { id: 'login', label: 'Login to Subscribe', icon: '🔑', variant: 'primary' },
-            ...(prompt.actions || [])
-          ];
-        } else if (isAuthenticated && !isSubscribed) {
-          augmented.actions = [
-            { id: 'subscribe-now', label: 'Subscribe Now', icon: '💳', variant: 'primary' },
-            ...(prompt.actions || [])
-          ];
-        }
-        setLog(prev => [...prev, { ...augmented, from: 'bot' }]);
-        return count; // freeze
-      }
-      return newCount;
-    });
+  // Track user message count with gating logic
+  setUserMessageCount(count => handleMessageCountAdvance(count));
     if (!isSubscribed && (userMessageCount >= FREE_MESSAGE_LIMIT) && !paywallDismissed) {
       setSubscriptionRequired(true);
       const prompt = getPaywallPrompt();
@@ -374,6 +370,40 @@ function TodoApp() {
     }
   };
 
+  // Helper for gating logic when advancing message count
+  const handleMessageCountAdvance = useCallback((count) => {
+    const newCount = count + 1;
+    if (!isSubscribed && newCount > FREE_MESSAGE_LIMIT && !paywallDismissed) {
+      setSubscriptionRequired(true);
+      const prompt = getPaywallPrompt();
+      const augmented = { ...prompt };
+      if (!isAuthenticated) {
+        augmented.actions = [
+          { id: 'login', label: 'Login to Subscribe', icon: '🔑', variant: 'primary' },
+          ...(prompt.actions || [])
+        ];
+      } else {
+        augmented.actions = [
+          { id: 'subscribe-now', label: 'Subscribe Now', icon: '💳', variant: 'primary' },
+          ...(prompt.actions || [])
+        ];
+      }
+      setLog(prev => [...prev, { ...augmented, from: 'bot' }]);
+      return count; // freeze
+    }
+    return newCount;
+  }, [FREE_MESSAGE_LIMIT, isAuthenticated, isSubscribed, paywallDismissed]);
+
+  const remainingMessages = useMemo(() => {
+    if (isSubscribed) return Infinity;
+    return Math.max(FREE_MESSAGE_LIMIT - userMessageCount, 0);
+  }, [FREE_MESSAGE_LIMIT, isSubscribed, userMessageCount]);
+
+  const usagePercent = useMemo(() => {
+    if (isSubscribed) return 100;
+    return Math.min(100, (userMessageCount / FREE_MESSAGE_LIMIT) * 100);
+  }, [userMessageCount, FREE_MESSAGE_LIMIT, isSubscribed]);
+
   const exampleQuestions = [
     "Build a todo app with React",
     "Create a landing page for my startup",
@@ -399,6 +429,8 @@ function TodoApp() {
         </div>
 
         <div className="chat-messages">
+          {/* aria-live region for screen readers */}
+          <div ref={liveRegionRef} aria-live="polite" style={{position:'absolute', left:'-9999px', top:'-9999px'}} />
           {log.map((message, index) => (
             <div 
               key={index} 
@@ -487,7 +519,7 @@ function TodoApp() {
             {isSubscribed ? 'Pro subscriber – unlimited messages' : (
               subscriptionRequired && !paywallDismissed
                 ? 'Upgrade required to continue'
-                : `${Math.max(FREE_MESSAGE_LIMIT - userMessageCount, 0)} free message${(FREE_MESSAGE_LIMIT - userMessageCount) === 1 ? '' : 's'} left`
+                : `${remainingMessages} free message${remainingMessages === 1 ? '' : 's'} left`
             )} • Press Enter to send • Shift+Enter for new line
             {isSubscribed && (
               <button onClick={openBillingPortal} className="manage-billing-btn" style={{ marginLeft: 8 }}>
@@ -495,6 +527,11 @@ function TodoApp() {
               </button>
             )}
           </div>
+          {!isSubscribed && (
+            <div className="usage-bar" style={{marginTop:4, height:6, background:'var(--bg-secondary)', borderRadius:4, overflow:'hidden'}}>
+              <div style={{width:`${usagePercent}%`, height:'100%', background: usagePercent > 90 ? '#dc2626' : usagePercent > 60 ? '#f59e0b' : 'var(--primary-color)', transition:'width .3s'}} />
+            </div>
+          )}
         </div>
       </div>
     </div>
