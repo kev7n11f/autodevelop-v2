@@ -12,7 +12,7 @@ export default function AdminEmailList() {
     setError(null);
     
     try {
-      const response = await fetch('/api/mailing-list/stats', {
+      const response = await fetch('/api/payments/mailing-list/stats', {
         headers: {
           'x-admin-key': key
         }
