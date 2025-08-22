@@ -298,6 +298,41 @@ class Database {
     });
   }
 
+  async updatePaymentSubscriptionByUserId(userId, updateData) {
+    const fields = [];
+    const values = [];
+    
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] !== undefined) {
+        fields.push(`${key} = ?`);
+        values.push(updateData[key]);
+      }
+    });
+    
+    if (fields.length === 0) {
+      return Promise.resolve();
+    }
+    
+    fields.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(userId);
+
+    const updateSQL = `UPDATE payment_subscriptions SET ${fields.join(', ')} WHERE user_id = ?`;
+
+    return new Promise((resolve, reject) => {
+      this.db.run(updateSQL, values, function(err) {
+        if (err) {
+          logger.error('Error updating payment subscription by user ID:', err);
+          reject(err);
+        } else if (this.changes === 0) {
+          reject(new Error('Subscription not found for user'));
+        } else {
+          logger.info(`Payment subscription updated for user: ${userId}`);
+          resolve();
+        }
+      });
+    });
+  }
+
   async getPaymentSubscription(userId) {
     const selectSQL = `SELECT * FROM payment_subscriptions WHERE user_id = ? ORDER BY created_at DESC LIMIT 1`;
 
