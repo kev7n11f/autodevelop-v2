@@ -8,6 +8,13 @@ const {
   deleteUserData, 
   getStats 
 } = require('../controllers/mailingListController');
+const {
+  createSubscription,
+  processPaymentEvent,
+  getSubscription,
+  processPendingNotifications,
+  checkUpcomingRenewals
+} = require('../controllers/paymentController');
 
 // Chat endpoint
 router.post('/chat', chat);
@@ -18,6 +25,13 @@ router.get('/mailing-list/confirm/:token', confirmSubscription);
 router.get('/mailing-list/unsubscribe/:token', unsubscribe);
 router.delete('/mailing-list/delete-data', deleteUserData);
 router.get('/mailing-list/stats', getStats);
+
+// Payment endpoints
+router.post('/payments/subscription', createSubscription);
+router.post('/payments/webhook', processPaymentEvent);
+router.get('/payments/subscription/:userId', getSubscription);
+router.post('/payments/process-notifications', processPendingNotifications);
+router.post('/payments/check-renewals', checkUpcomingRenewals);
 
 // Admin endpoints for monitoring and management
 router.get('/admin/suspicious-activity', getSuspiciousActivity);
