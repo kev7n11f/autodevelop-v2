@@ -6,12 +6,17 @@ import {
   ERROR_TEMPLATES, 
   MESSAGE_TYPES 
 } from '../utils/messageFormatter';
+import { SUBSCRIPTION_PROMPT } from '../utils/subscriptionPrompt';
+import { getPaywallPrompt } from '../utils/subscriptionPrompt';
 
 export default function BotUI() {
   const [input, setInput] = useState('');
   const [log, setLog] = useState([
     createFormattedMessage('Hello! I\'m your AI development assistant. How can I help you bring your ideas to life today?', MESSAGE_TYPES.NORMAL)
   ]);
+  const [userMessageCount, setUserMessageCount] = useState(0);
+  const [subscriptionRequired, setSubscriptionRequired] = useState(false);
+  const [paywallDismissed, setPaywallDismissed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
@@ -26,6 +31,12 @@ export default function BotUI() {
   // Handle action button clicks
   const handleActionClick = (actionId, actionData, message) => {
     switch (actionId) {
+      case 'maybe-later': {
+        setPaywallDismissed(true);
+        setSubscriptionRequired(false);
+        break;
+      }
+  if (!input.trim() || (subscriptionRequired && !paywallDismissed)) return;
       case 'retry': {
         // Retry the last user message
         const lastUserMessage = log.filter(msg => msg.from === 'user').pop();
@@ -64,6 +75,7 @@ export default function BotUI() {
   };
   const send = async () => {
     if (!input.trim()) return;
+  if (subscriptionRequired) return;
     
     const userMsg = input.trim();
     
@@ -126,6 +138,23 @@ function TodoApp() {
     </div>
   );
 }
+    // Track user message count
+    setUserMessageCount(count => {
+      const newCount = count + 1;
+      if (newCount > 5 && !paywallDismissed) {
+        setSubscriptionRequired(true);
+        setLog(prev => [...prev, { ...getPaywallPrompt(), from: 'bot' }]);
+        return count; // Don't increment further
+      }
+      return newCount;
+    });
+    // If subscription is now required, block further messages
+    if (userMessageCount >= 5) {
+      if ((userMessageCount >= 5) && !paywallDismissed) {
+        setSubscriptionRequired(true);
+        setLog(prev => [...prev, { ...getPaywallPrompt(), from: 'bot' }]);
+      return;
+    }
 \`\`\`
 
 **Next Steps:**
@@ -317,10 +346,10 @@ function TodoApp() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Describe your project or ask for help..."
+              placeholder={subscriptionRequired && !paywallDismissed ? "Subscribe to continue..." : "Describe your project or ask for help..."}
+              disabled={isLoading || (subscriptionRequired && !paywallDismissed)}
               className="message-input"
               rows="1"
-              disabled={isLoading}
             />
             <button 
               onClick={send} 
