@@ -1,0 +1,145 @@
+// Authentication service for frontend
+class AuthService {
+  constructor() {
+    this.apiBase = '/api/auth';
+    this.user = null;
+    this.isAuthenticated = false;
+    this.listeners = [];
+  }
+
+  // Add listener for auth state changes
+  addAuthListener(callback) {
+    this.listeners.push(callback);
+  }
+
+  // Remove listener
+  removeAuthListener(callback) {
+    this.listeners = this.listeners.filter(listener => listener !== callback);
+  }
+
+  // Notify all listeners of auth state change
+  notifyListeners() {
+    this.listeners.forEach(callback => callback(this.isAuthenticated, this.user));
+  }
+
+  // Check authentication status
+  async checkAuthStatus() {
+    try {
+      const response = await fetch(`${this.apiBase}/status`, {
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        this.isAuthenticated = data.authenticated;
+        this.user = data.user;
+        this.notifyListeners();
+        return { authenticated: data.authenticated, user: data.user };
+      } else {
+        this.isAuthenticated = false;
+        this.user = null;
+        this.notifyListeners();
+        return { authenticated: false, user: null };
+      }
+    } catch (error) {
+      console.warn('Error checking auth status:', error);
+      this.isAuthenticated = false;
+      this.user = null;
+      this.notifyListeners();
+      return { authenticated: false, user: null };
+    }
+  }
+
+  // Get current user
+  async getCurrentUser() {
+    try {
+      const response = await fetch(`${this.apiBase}/me`, {
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        this.user = data.user;
+        this.isAuthenticated = true;
+        this.notifyListeners();
+        return data.user;
+      } else {
+        this.user = null;
+        this.isAuthenticated = false;
+        this.notifyListeners();
+        return null;
+      }
+    } catch (error) {
+      console.warn('Error getting current user:', error);
+      this.user = null;
+      this.isAuthenticated = false;
+      this.notifyListeners();
+      return null;
+    }
+  }
+
+  // Initiate Google OAuth login
+  loginWithGoogle() {
+    // Redirect to Google OAuth
+    window.location.href = `${this.apiBase}/google`;
+  }
+
+  // Logout user
+  async logout() {
+    try {
+      const response = await fetch(`${this.apiBase}/logout`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        this.user = null;
+        this.isAuthenticated = false;
+        this.notifyListeners();
+        return true;
+      } else {
+        console.error('Logout failed');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error during logout:', error);
+      return false;
+    }
+  }
+
+  // Refresh token
+  async refreshToken() {
+    try {
+      const response = await fetch(`${this.apiBase}/refresh`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        // Re-check auth status after refresh
+        return await this.checkAuthStatus();
+      } else {
+        this.user = null;
+        this.isAuthenticated = false;
+        this.notifyListeners();
+        return { authenticated: false, user: null };
+      }
+    } catch (error) {
+      console.warn('Error refreshing token:', error);
+      this.user = null;
+      this.isAuthenticated = false;
+      this.notifyListeners();
+      return { authenticated: false, user: null };
+    }
+  }
+
+  // Get user info (current state)
+  getUserInfo() {
+    return {
+      isAuthenticated: this.isAuthenticated,
+      user: this.user
+    };
+  }
+}
+
+export default new AuthService();

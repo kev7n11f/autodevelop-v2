@@ -56,6 +56,36 @@ class Database {
       )
     `;
 
+    const createUsersTableSQL = `
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        google_id TEXT UNIQUE NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        name TEXT NOT NULL,
+        avatar_url TEXT,
+        locale TEXT,
+        verified_email BOOLEAN DEFAULT FALSE,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        last_login_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+
+    const createUserSessionsTableSQL = `
+      CREATE TABLE IF NOT EXISTS user_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        session_token TEXT UNIQUE NOT NULL,
+        refresh_token TEXT,
+        expires_at DATETIME NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        last_accessed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        ip_address TEXT,
+        user_agent TEXT,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `;
+
     const createPaymentEventsTableSQL = `
       CREATE TABLE IF NOT EXISTS payment_events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -75,6 +105,12 @@ class Database {
     `;
 
     try {
+      await this.runQuery(createUsersTableSQL);
+      logger.info('Users table initialized');
+      
+      await this.runQuery(createUserSessionsTableSQL);
+      logger.info('User sessions table initialized');
+      
       await this.runQuery(createMailingListTableSQL);
       logger.info('Mailing list table initialized');
       
@@ -432,6 +468,176 @@ class Database {
           reject(err);
         } else {
           resolve(rows);
+        }
+      });
+    });
+  }
+
+  // User management methods for OAuth authentication
+  async createUser(userData) {
+    const { googleId, email, name, avatarUrl, locale, verifiedEmail } = userData;
+    const insertSQL = `
+      INSERT INTO users (google_id, email, name, avatar_url, locale, verified_email)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `;
+
+    return new Promise((resolve, reject) => {
+      this.db.run(insertSQL, [googleId, email, name, avatarUrl, locale, verifiedEmail], function(err) {
+        if (err) {
+          logger.error('Error creating user:', err);
+          reject(err);
+        } else {
+          logger.info(`User created with ID: ${this.lastID}`);
+          resolve({ id: this.lastID, ...userData });
+        }
+      });
+    });
+  }
+
+  async getUserByGoogleId(googleId) {
+    const selectSQL = `SELECT * FROM users WHERE google_id = ?`;
+
+    return new Promise((resolve, reject) => {
+      this.db.get(selectSQL, [googleId], (err, row) => {
+        if (err) {
+          logger.error('Error getting user by Google ID:', err);
+          reject(err);
+        } else {
+          resolve(row);
+        }
+      });
+    });
+  }
+
+  async getUserByEmail(email) {
+    const selectSQL = `SELECT * FROM users WHERE email = ?`;
+
+    return new Promise((resolve, reject) => {
+      this.db.get(selectSQL, [email], (err, row) => {
+        if (err) {
+          logger.error('Error getting user by email:', err);
+          reject(err);
+        } else {
+          resolve(row);
+        }
+      });
+    });
+  }
+
+  async getUserById(id) {
+    const selectSQL = `SELECT * FROM users WHERE id = ?`;
+
+    return new Promise((resolve, reject) => {
+      this.db.get(selectSQL, [id], (err, row) => {
+        if (err) {
+          logger.error('Error getting user by ID:', err);
+          reject(err);
+        } else {
+          resolve(row);
+        }
+      });
+    });
+  }
+
+  async updateUserLastLogin(userId) {
+    const updateSQL = `UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?`;
+
+    return new Promise((resolve, reject) => {
+      this.db.run(updateSQL, [userId], function(err) {
+        if (err) {
+          logger.error('Error updating user last login:', err);
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
+  async createUserSession(sessionData) {
+    const { userId, sessionToken, refreshToken, expiresAt, ipAddress, userAgent } = sessionData;
+    const insertSQL = `
+      INSERT INTO user_sessions (user_id, session_token, refresh_token, expires_at, ip_address, user_agent)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `;
+
+    return new Promise((resolve, reject) => {
+      this.db.run(insertSQL, [userId, sessionToken, refreshToken, expiresAt, ipAddress, userAgent], function(err) {
+        if (err) {
+          logger.error('Error creating user session:', err);
+          reject(err);
+        } else {
+          logger.info(`User session created with ID: ${this.lastID}`);
+          resolve({ id: this.lastID, ...sessionData });
+        }
+      });
+    });
+  }
+
+  async getUserSession(sessionToken) {
+    const selectSQL = `
+      SELECT us.*, u.* 
+      FROM user_sessions us 
+      JOIN users u ON us.user_id = u.id 
+      WHERE us.session_token = ? AND us.expires_at > CURRENT_TIMESTAMP
+    `;
+
+    return new Promise((resolve, reject) => {
+      this.db.get(selectSQL, [sessionToken], (err, row) => {
+        if (err) {
+          logger.error('Error getting user session:', err);
+          reject(err);
+        } else {
+          resolve(row);
+        }
+      });
+    });
+  }
+
+  async updateSessionLastAccessed(sessionToken) {
+    const updateSQL = `UPDATE user_sessions SET last_accessed_at = CURRENT_TIMESTAMP WHERE session_token = ?`;
+
+    return new Promise((resolve, reject) => {
+      this.db.run(updateSQL, [sessionToken], function(err) {
+        if (err) {
+          logger.error('Error updating session last accessed:', err);
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
+  async deleteUserSession(sessionToken) {
+    const deleteSQL = `DELETE FROM user_sessions WHERE session_token = ?`;
+
+    return new Promise((resolve, reject) => {
+      this.db.run(deleteSQL, [sessionToken], function(err) {
+        if (err) {
+          logger.error('Error deleting user session:', err);
+          reject(err);
+        } else {
+          logger.info(`User session deleted: ${sessionToken.substring(0, 8)}...`);
+          resolve();
+        }
+      });
+    });
+  }
+
+  async deleteExpiredSessions() {
+    const deleteSQL = `DELETE FROM user_sessions WHERE expires_at <= CURRENT_TIMESTAMP`;
+
+    return new Promise((resolve, reject) => {
+      this.db.run(deleteSQL, [], function(err) {
+        if (err) {
+          logger.error('Error deleting expired sessions:', err);
+          reject(err);
+        } else {
+          if (this.changes > 0) {
+            logger.info(`Deleted ${this.changes} expired sessions`);
+          }
+          resolve(this.changes);
         }
       });
     });
