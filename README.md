@@ -9,6 +9,7 @@ AutoDevelop.ai is a modern, full-stack platform that empowers developers and ent
 ## Key Features
 
 - **AI-Powered Guidance**: Get practical advice, code examples, and best practices tailored to your project.
+- **Google OAuth Authentication**: Secure user authentication with Google accounts, JWT tokens, and session management.
 - **Rapid Prototyping**: Go from idea to working prototype in hours, not weeks.
 - **Personalized Learning**: Learn as you build, with explanations and resources that match your skill level.
 - **Full-Stack Support**: Frontend, backend, database, deployment—everything covered.
@@ -174,6 +175,17 @@ FRONTEND_URL=http://localhost:5173
 4. Configure SendGrid sender & API key.
 5. Roll out frontend changes (upgrade & mailing list modals, counters, polling).
 6. Monitor `/api/admin/usage/stats` and `/api/mailing-list/stats`.
+
+## Authentication System
+
+AutoDevelop.ai includes a complete Google OAuth 2.0 authentication system:
+
+- **Secure Login**: Users can sign in with their Google accounts
+- **Session Management**: JWT-based authentication with secure cookie storage
+- **User Profiles**: Automatic profile creation and management
+- **Security Features**: CSRF protection, rate limiting, and secure token handling
+
+For detailed setup instructions, see [GOOGLE_OAUTH_SETUP.md](./GOOGLE_OAUTH_SETUP.md).
 
 ## Getting Started
 

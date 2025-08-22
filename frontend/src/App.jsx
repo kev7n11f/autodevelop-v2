@@ -2,20 +2,28 @@ import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react
 import { useState, useEffect } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
+<<<<<<< HEAD
 import { Helmet } from 'react-helmet';
+=======
+import { AuthProvider } from './contexts/AuthContext';
+>>>>>>> db79f9b00280321160ec194c74502181aee2d291
 import BotUI from './components/BotUI';
 import About from './components/About';
 import Contact from './components/Contact';
 import Privacy from './components/Privacy';
 import TermsOfService from './components/TermsOfService';
+import Login from './components/Login';
+import UserProfile from './components/UserProfile';
 import MailingListModal from './components/MailingListModal';
 import NotificationBar from './components/NotificationBar';
 import AdminEmailList from './components/AdminEmailList';
+import { useAuth } from './contexts/AuthContext';
 import './App.css';
 
 function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
+  const { isAuthenticated, loading } = useAuth();
 
   const navItems = [
     { path: '/', label: 'Chat', icon: '💬' },
@@ -47,6 +55,19 @@ function Navigation() {
           ))}
         </div>
 
+        <div className="nav-auth">
+          {!loading && (
+            isAuthenticated ? (
+              <UserProfile />
+            ) : (
+              <Link to="/login" className="auth-link">
+                <span className="auth-icon">👤</span>
+                <span>Sign In</span>
+              </Link>
+            )
+          )}
+        </div>
+
         <button 
           className="nav-toggle"
           onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -73,6 +94,7 @@ function FloatingActionButton() {
   );
 }
 
+<<<<<<< HEAD
 function SEO({ title, description }) {
   return (
     <Helmet>
@@ -138,6 +160,9 @@ async function handleUpgrade() {
 }
 
 export default function App() {
+=======
+function AppContent() {
+>>>>>>> db79f9b00280321160ec194c74502181aee2d291
   const [isMailingModalOpen, setIsMailingModalOpen] = useState(false);
 
   // Check for URL parameters for confirmation states
@@ -182,6 +207,7 @@ export default function App() {
   }
 
   return (
+<<<<<<< HEAD
     <Router>
       <SEO title={seoTitle} description={seoDesc} />
       <div className="app">
@@ -231,40 +257,85 @@ export default function App() {
         </main>
 
         <footer className="modern-footer">
+=======
+    <div className="app">
+      <NotificationBar />
+      <Navigation />
+      
+      <main className="main-content">
+        <div className="hero-section">
+>>>>>>> db79f9b00280321160ec194c74502181aee2d291
           <div className="container">
-            <div className="footer-content">
-              <div className="footer-section">
-                <h3>AutoDevelop.ai</h3>
-                <p>Transforming ideas into reality with AI-powered development.</p>
-              </div>
-              <div className="footer-section">
-                <h4>Quick Links</h4>
-                <div className="footer-links">
-                  <Link to="/about">About</Link>
-                  <Link to="/contact">Contact</Link>
-                  <Link to="/privacy">Privacy Policy</Link>
-                  <Link to="/terms">Terms of Service</Link>
-                </div>
-              </div>
-              <div className="footer-section">
-                <h4>Connect</h4>
-                <p>Ready to build something amazing?</p>
-                <Link to="/contact" className="btn btn-primary">Get Started</Link>
+            <div className="hero-content">
+              <h1 className="hero-title">
+                Transform Ideas into <span className="gradient-text">Reality</span>
+              </h1>
+              <p className="hero-subtitle">
+                Use AI to bring your vision to life — step by step, powered by you.
+              </p>
+              <div className="hero-actions">
                 <button 
-                  className="btn btn-outline"
+                  className="btn btn-secondary"
                   onClick={() => setIsMailingModalOpen(true)}
-                  style={{ marginLeft: 'var(--space-2)' }}
                 >
-                  Subscribe to Updates
+                  📧 Get Updates
                 </button>
               </div>
             </div>
-            <div className="footer-bottom">
-              <p>&copy; 2025 AutoDevelop.ai. All rights reserved.</p>
+          </div>
+        </div>
+
+        <div className="content-section">
+          <div className="container">
+            <Routes>
+              <Route path="/" element={<BotUI />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/terms" element={<TermsOfService />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/admin/email-list" element={<AdminEmailList />} />
+            </Routes>
+          </div>
+        </div>
+      </main>
+
+      <footer className="modern-footer">
+        <div className="container">
+          <div className="footer-content">
+            <div className="footer-section">
+              <h3>AutoDevelop.ai</h3>
+              <p>Transforming ideas into reality with AI-powered development.</p>
+            </div>
+            <div className="footer-section">
+              <h4>Quick Links</h4>
+              <div className="footer-links">
+                <Link to="/about">About</Link>
+                <Link to="/contact">Contact</Link>
+                <Link to="/privacy">Privacy Policy</Link>
+                <Link to="/terms">Terms of Service</Link>
+              </div>
+            </div>
+            <div className="footer-section">
+              <h4>Connect</h4>
+              <p>Ready to build something amazing?</p>
+              <Link to="/contact" className="btn btn-primary">Get Started</Link>
+              <button 
+                className="btn btn-outline"
+                onClick={() => setIsMailingModalOpen(true)}
+                style={{ marginLeft: 'var(--space-2)' }}
+              >
+                Subscribe to Updates
+              </button>
             </div>
           </div>
-        </footer>
+          <div className="footer-bottom">
+            <p>&copy; 2025 AutoDevelop.ai. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
 
+<<<<<<< HEAD
         <FloatingActionButton />
         
         <MailingListModal 
@@ -277,5 +348,27 @@ export default function App() {
         <FloatingUpgradeButton />
       </div>
     </Router>
+=======
+      <FloatingActionButton />
+      
+      <MailingListModal 
+        isOpen={isMailingModalOpen}
+        onClose={() => setIsMailingModalOpen(false)}
+      />
+      
+      <Analytics />
+      <SpeedInsights />
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <AppContent />
+      </Router>
+    </AuthProvider>
+>>>>>>> db79f9b00280321160ec194c74502181aee2d291
   );
 }
