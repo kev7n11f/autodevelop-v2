@@ -142,12 +142,12 @@ const MessageActions = ({ actions, onActionClick }) => {
  * Enhanced message bubble component with structured content support
  */
 const EnhancedMessageBubble = ({ message, onActionClick }) => {
-  const { text, template, structure, actions, isError } = message;
-  
+  const { text, template, structure, actions, isError, type } = message;
+  // Only show type header for errors, warnings, info, or success, not for normal
+  const showTypeHeader = (isError || (type && type !== 'normal')) && template && template.prefix;
   // Determine message class
   const messageClass = isError ? 'error-bubble' : 
-                     template ? template.className : 
-                     'message-normal';
+                     (type && type !== 'normal' && template ? template.className : 'message-normal');
 
   // Handle action clicks
   const handleActionClick = (actionId, actionData) => {
@@ -159,13 +159,12 @@ const EnhancedMessageBubble = ({ message, onActionClick }) => {
   return (
     <div className={`message-bubble enhanced-bubble ${messageClass}`}>
       {/* Message type indicator */}
-      {template && template.prefix && (
+      {showTypeHeader && (
         <div className="message-type-header">
           <span className="message-type-icon">{template.icon}</span>
           <span className="message-type-label">{template.prefix}</span>
         </div>
       )}
-      
       {/* Message content */}
       <div className="message-main-content">
         {structure && structure.hasStructure ? (
@@ -177,7 +176,6 @@ const EnhancedMessageBubble = ({ message, onActionClick }) => {
           <div className="message-simple-text">{text}</div>
         )}
       </div>
-      
       {/* Action buttons */}
       {actions && (
         <MessageActions 
