@@ -6,6 +6,7 @@ import Contact from './components/Contact';
 import Privacy from './components/Privacy';
 import TermsOfService from './components/TermsOfService';
 import MailingListModal from './components/MailingListModal';
+import NotificationBar from './components/NotificationBar';
 import './App.css';
 
 function Navigation() {
@@ -98,6 +99,7 @@ export default function App() {
   return (
     <Router>
       <div className="app">
+        <NotificationBar />
         <Navigation />
         
         <main className="main-content">
