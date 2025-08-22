@@ -6,18 +6,24 @@ import {
   ERROR_TEMPLATES, 
   MESSAGE_TYPES 
 } from '../utils/messageFormatter';
-import { SUBSCRIPTION_PROMPT } from '../utils/subscriptionPrompt';
 import { getPaywallPrompt } from '../utils/subscriptionPrompt';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function BotUI() {
+  const { isAuthenticated, user, loginWithGoogle } = useAuth();
   const [input, setInput] = useState('');
   const [log, setLog] = useState([
     createFormattedMessage('Hello! I\'m your AI development assistant. How can I help you bring your ideas to life today?', MESSAGE_TYPES.NORMAL)
   ]);
+  const FREE_MESSAGE_LIMIT = 5;
   const [userMessageCount, setUserMessageCount] = useState(0);
   const [subscriptionRequired, setSubscriptionRequired] = useState(false);
-  const [paywallDismissed, setPaywallDismissed] = useState(false);
+  const [paywallDismissed, setPaywallDismissed] = useState(() => {
+    try { return localStorage.getItem('paywallDismissed') === '1'; } catch { return false; }
+  });
   const [isLoading, setIsLoading] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [checkingSubscription, setCheckingSubscription] = useState(false);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -28,15 +34,106 @@ export default function BotUI() {
     scrollToBottom();
   }, [log]);
 
+  // Fetch subscription status when user changes or authenticates
+  useEffect(() => {
+    const fetchSubscription = async () => {
+      if (!isAuthenticated || !user?.id) {
+        setIsSubscribed(false);
+        return;
+      }
+      try {
+        setCheckingSubscription(true);
+        const res = await fetch(`/api/payments/subscription/${user.id}`);
+        if (res.ok) {
+          const data = await res.json();
+            if (data?.subscription?.status === 'active') {
+              setIsSubscribed(true);
+              setSubscriptionRequired(false);
+            } else {
+              setIsSubscribed(false);
+            }
+        } else if (res.status === 404) {
+          setIsSubscribed(false);
+        }
+      } catch (e) {
+        console.warn('Failed to check subscription status', e);
+      } finally {
+        setCheckingSubscription(false);
+      }
+    };
+    fetchSubscription();
+  }, [isAuthenticated, user?.id]);
+
+  const startCheckout = async () => {
+    if (!isAuthenticated) {
+      loginWithGoogle();
+      return;
+    }
+    try {
+      const body = {
+        userId: user?.id || user?._id || 'unknown-user',
+        email: user?.email || localStorage.getItem('userEmail') || 'user@example.com',
+        name: user?.name || user?.displayName || 'User'
+      };
+      const res = await fetch('/api/payments/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.error || 'Failed to start checkout');
+      }
+    } catch (err) {
+      alert('Network error starting checkout');
+    }
+  };
+
+  const openBillingPortal = async () => {
+    if (!isAuthenticated) {
+      loginWithGoogle();
+      return;
+    }
+    try {
+      const res = await fetch('/api/payments/stripe/portal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerId: user?.stripeCustomerId || user?.stripe_customer_id })
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.error || 'Could not open billing portal');
+      }
+    } catch (e) {
+      alert('Network error opening billing portal');
+    }
+  };
+
   // Handle action button clicks
   const handleActionClick = (actionId, actionData, message) => {
     switch (actionId) {
       case 'maybe-later': {
         setPaywallDismissed(true);
+        try { localStorage.setItem('paywallDismissed', '1'); } catch {}
         setSubscriptionRequired(false);
         break;
       }
-  if (!input.trim() || (subscriptionRequired && !paywallDismissed)) return;
+      case 'subscribe-now': {
+        startCheckout();
+        break;
+      }
+      case 'login': {
+        loginWithGoogle();
+        break;
+      }
+      case 'manage-billing': {
+        openBillingPortal();
+        break;
+      }
       case 'retry': {
         // Retry the last user message
         const lastUserMessage = log.filter(msg => msg.from === 'user').pop();
@@ -75,7 +172,7 @@ export default function BotUI() {
   };
   const send = async () => {
     if (!input.trim()) return;
-  if (subscriptionRequired) return;
+  if (subscriptionRequired && !isSubscribed) return;
     
     const userMsg = input.trim();
     
@@ -138,21 +235,46 @@ function TodoApp() {
     </div>
   );
 }
-    // Track user message count
+    // Track user message count with gating logic
     setUserMessageCount(count => {
       const newCount = count + 1;
-      if (newCount > 5 && !paywallDismissed) {
+      if (!isSubscribed && newCount > FREE_MESSAGE_LIMIT && !paywallDismissed) {
         setSubscriptionRequired(true);
-        setLog(prev => [...prev, { ...getPaywallPrompt(), from: 'bot' }]);
-        return count; // Don't increment further
+        const prompt = getPaywallPrompt();
+        // Augment actions based on auth state
+        const augmented = { ...prompt };
+        if (!isAuthenticated) {
+          augmented.actions = [
+            { id: 'login', label: 'Login to Subscribe', icon: '🔑', variant: 'primary' },
+            ...(prompt.actions || [])
+          ];
+        } else if (isAuthenticated && !isSubscribed) {
+          augmented.actions = [
+            { id: 'subscribe-now', label: 'Subscribe Now', icon: '💳', variant: 'primary' },
+            ...(prompt.actions || [])
+          ];
+        }
+        setLog(prev => [...prev, { ...augmented, from: 'bot' }]);
+        return count; // freeze
       }
       return newCount;
     });
-    // If subscription is now required, block further messages
-    if (userMessageCount >= 5) {
-      if ((userMessageCount >= 5) && !paywallDismissed) {
-        setSubscriptionRequired(true);
-        setLog(prev => [...prev, { ...getPaywallPrompt(), from: 'bot' }]);
+    if (!isSubscribed && (userMessageCount >= FREE_MESSAGE_LIMIT) && !paywallDismissed) {
+      setSubscriptionRequired(true);
+      const prompt = getPaywallPrompt();
+      const augmented = { ...prompt };
+      if (!isAuthenticated) {
+        augmented.actions = [
+          { id: 'login', label: 'Login to Subscribe', icon: '🔑', variant: 'primary' },
+          ...(prompt.actions || [])
+        ];
+      } else if (isAuthenticated && !isSubscribed) {
+        augmented.actions = [
+          { id: 'subscribe-now', label: 'Subscribe Now', icon: '💳', variant: 'primary' },
+          ...(prompt.actions || [])
+        ];
+      }
+      setLog(prev => [...prev, { ...augmented, from: 'bot' }]);
       return;
     }
 \`\`\`
@@ -362,7 +484,16 @@ function TodoApp() {
           </div>
           
           <div className="input-hint">
-            Press Enter to send • Shift+Enter for new line
+            {isSubscribed ? 'Pro subscriber – unlimited messages' : (
+              subscriptionRequired && !paywallDismissed
+                ? 'Upgrade required to continue'
+                : `${Math.max(FREE_MESSAGE_LIMIT - userMessageCount, 0)} free message${(FREE_MESSAGE_LIMIT - userMessageCount) === 1 ? '' : 's'} left`
+            )} • Press Enter to send • Shift+Enter for new line
+            {isSubscribed && (
+              <button onClick={openBillingPortal} className="manage-billing-btn" style={{ marginLeft: 8 }}>
+                Manage Billing
+              </button>
+            )}
           </div>
         </div>
       </div>
