@@ -48,7 +48,8 @@ export default function MailingListModal({ isOpen, onClose }) {
       } else {
         setError(data.details || data.error || 'Subscription failed. Please try again.');
       }
-    } catch (err) {
+    } catch (error) {
+      console.warn('Mailing list subscription error:', error);
       setError('Network error. Please check your connection and try again.');
     } finally {
       setIsSubmitting(false);
