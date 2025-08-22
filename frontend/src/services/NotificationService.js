@@ -65,7 +65,7 @@ class NotificationService {
       });
       
       if (!response.ok) {
-        const data = await response.json().catch(() => ({ error: 'Network error' }));
+        const data = await response.json().catch(() => ({ error: 'Invalid JSON response' }));
         throw new Error(data.details || data.error || `Request failed with status ${response.status}`);
       }
       
