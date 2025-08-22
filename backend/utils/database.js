@@ -230,12 +230,12 @@ class Database {
     ];
     for (const col of columns) {
       await new Promise((resolve) => {
-        this.db.get(`PRAGMA table_info(payment_subscriptions)`, [], (err, rows) => {
+        this.db.all(`PRAGMA table_info(payment_subscriptions)`, [], (err, rows) => {
           if (err) return resolve();
-          const exists = rows.some(r => r.name === col);
-            if (!exists) {
-              this.db.run(`ALTER TABLE payment_subscriptions ADD COLUMN ${col} TEXT`, [], () => resolve());
-            } else resolve();
+          const exists = Array.isArray(rows) && rows.some(r => r.name === col);
+          if (!exists) {
+            this.db.run(`ALTER TABLE payment_subscriptions ADD COLUMN ${col} TEXT`, [], () => resolve());
+          } else resolve();
         });
       });
     }
@@ -245,10 +245,10 @@ class Database {
     // monthly_message_count & monthly_period_start might be missing
     const needed = ['monthly_message_count','monthly_period_start'];
     const info = await new Promise((resolve) => {
-      this.db.get(`PRAGMA table_info(usage_counters)`, [], (err, rows) => resolve(rows));
+      this.db.all(`PRAGMA table_info(usage_counters)`, [], (err, rows) => resolve(Array.isArray(rows) ? rows : []));
     });
     for (const c of needed) {
-      const exists = (Array.isArray(info) ? info : []).some(r => r.name === c);
+      const exists = info.some(r => r.name === c);
       if (!exists) {
         const ddl = c === 'monthly_message_count' ? 'INTEGER DEFAULT 0' : 'DATETIME';
         await this.runQuery(`ALTER TABLE usage_counters ADD COLUMN ${c} ${ddl}`);
@@ -790,4 +790,4 @@ class Database {
   }
 }
 
-module.exports = Database;
+module.exports = new Database();
