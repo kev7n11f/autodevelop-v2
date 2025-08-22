@@ -195,6 +195,257 @@ class EmailService {
       throw error;
     }
   }
+
+  // Payment notification methods
+  async sendPaymentSuccessEmail(email, name, paymentData) {
+    const { amount, currency, planType, transactionId, nextBillingDate } = paymentData;
+    
+    const msg = {
+      to: email,
+      from: process.env.FROM_EMAIL || 'noreply@autodevelop.ai',
+      subject: 'Payment Successful - AutoDevelop.ai',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Payment Confirmation</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
+            .container { max-width: 600px; margin: 0 auto; background-color: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .header { text-align: center; margin-bottom: 30px; }
+            .logo { font-size: 24px; font-weight: bold; color: #4f46e5; margin-bottom: 10px; }
+            .title { font-size: 28px; margin-bottom: 10px; color: #333; }
+            .success-icon { font-size: 48px; color: #10b981; margin-bottom: 20px; }
+            .content { margin-bottom: 30px; }
+            .details-box { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 20px; margin: 20px 0; }
+            .detail-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+            .detail-label { font-weight: 600; color: #4a5568; }
+            .detail-value { color: #2d3748; }
+            .btn { display: inline-block; background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 20px 0; }
+            .footer { font-size: 14px; color: #666; text-align: center; border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <div class="logo">🚀 AutoDevelop.ai</div>
+              <div class="success-icon">✅</div>
+              <h1 class="title">Payment Successful!</h1>
+            </div>
+            
+            <div class="content">
+              <p>Hi ${name},</p>
+              
+              <p>Thank you for your payment! Your ${planType} subscription has been successfully renewed.</p>
+              
+              <div class="details-box">
+                <div class="detail-row">
+                  <span class="detail-label">Amount:</span>
+                  <span class="detail-value">${currency} ${amount}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Plan:</span>
+                  <span class="detail-value">${planType.charAt(0).toUpperCase() + planType.slice(1)}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Transaction ID:</span>
+                  <span class="detail-value">${transactionId}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Next Billing Date:</span>
+                  <span class="detail-value">${new Date(nextBillingDate).toLocaleDateString()}</span>
+                </div>
+              </div>
+              
+              <p>Your subscription is now active and you have full access to all ${planType} features.</p>
+              
+              <div style="text-align: center;">
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard" class="btn">Access Dashboard</a>
+              </div>
+            </div>
+            
+            <div class="footer">
+              <p>If you have any questions, please contact our support team.</p>
+              <p>© 2025 AutoDevelop.ai. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    };
+
+    return this.sendEmail(msg, 'payment-success');
+  }
+
+  async sendPaymentFailedEmail(email, name, paymentData) {
+    const { amount, currency, planType, failureReason, nextRetryDate } = paymentData;
+    
+    const msg = {
+      to: email,
+      from: process.env.FROM_EMAIL || 'noreply@autodevelop.ai',
+      subject: 'Payment Failed - Action Required - AutoDevelop.ai',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Payment Failed</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
+            .container { max-width: 600px; margin: 0 auto; background-color: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .header { text-align: center; margin-bottom: 30px; }
+            .logo { font-size: 24px; font-weight: bold; color: #4f46e5; margin-bottom: 10px; }
+            .title { font-size: 28px; margin-bottom: 10px; color: #333; }
+            .warning-icon { font-size: 48px; color: #ef4444; margin-bottom: 20px; }
+            .content { margin-bottom: 30px; }
+            .details-box { background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 20px; margin: 20px 0; }
+            .detail-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+            .detail-label { font-weight: 600; color: #4a5568; }
+            .detail-value { color: #2d3748; }
+            .btn { display: inline-block; background-color: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 20px 0; }
+            .btn-secondary { background-color: #6b7280; }
+            .footer { font-size: 14px; color: #666; text-align: center; border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <div class="logo">🚀 AutoDevelop.ai</div>
+              <div class="warning-icon">⚠️</div>
+              <h1 class="title">Payment Failed</h1>
+            </div>
+            
+            <div class="content">
+              <p>Hi ${name},</p>
+              
+              <p>We were unable to process your payment for your ${planType} subscription. Please update your payment method to continue using AutoDevelop.ai.</p>
+              
+              <div class="details-box">
+                <div class="detail-row">
+                  <span class="detail-label">Amount:</span>
+                  <span class="detail-value">${currency} ${amount}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Plan:</span>
+                  <span class="detail-value">${planType.charAt(0).toUpperCase() + planType.slice(1)}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Reason:</span>
+                  <span class="detail-value">${failureReason || 'Payment method declined'}</span>
+                </div>
+                ${nextRetryDate ? `
+                <div class="detail-row">
+                  <span class="detail-label">Next Retry:</span>
+                  <span class="detail-value">${new Date(nextRetryDate).toLocaleDateString()}</span>
+                </div>
+                ` : ''}
+              </div>
+              
+              <p>To avoid service interruption, please update your payment method immediately.</p>
+              
+              <div style="text-align: center;">
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/billing" class="btn">Update Payment Method</a>
+                <br><br>
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/support" class="btn btn-secondary">Contact Support</a>
+              </div>
+            </div>
+            
+            <div class="footer">
+              <p>If you have questions, please contact our support team immediately.</p>
+              <p>© 2025 AutoDevelop.ai. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    };
+
+    return this.sendEmail(msg, 'payment-failed');
+  }
+
+  async sendRenewalReminderEmail(email, name, renewalData) {
+    const { amount, currency, planType, renewalDate, daysUntilRenewal } = renewalData;
+    
+    const msg = {
+      to: email,
+      from: process.env.FROM_EMAIL || 'noreply@autodevelop.ai',
+      subject: `Your AutoDevelop.ai subscription renews in ${daysUntilRenewal} days`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Subscription Renewal Reminder</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
+            .container { max-width: 600px; margin: 0 auto; background-color: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .header { text-align: center; margin-bottom: 30px; }
+            .logo { font-size: 24px; font-weight: bold; color: #4f46e5; margin-bottom: 10px; }
+            .title { font-size: 28px; margin-bottom: 10px; color: #333; }
+            .info-icon { font-size: 48px; color: #3b82f6; margin-bottom: 20px; }
+            .content { margin-bottom: 30px; }
+            .details-box { background-color: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; padding: 20px; margin: 20px 0; }
+            .detail-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+            .detail-label { font-weight: 600; color: #4a5568; }
+            .detail-value { color: #2d3748; }
+            .btn { display: inline-block; background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 20px 0; }
+            .btn-secondary { background-color: #6b7280; }
+            .footer { font-size: 14px; color: #666; text-align: center; border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <div class="logo">🚀 AutoDevelop.ai</div>
+              <div class="info-icon">📅</div>
+              <h1 class="title">Renewal Reminder</h1>
+            </div>
+            
+            <div class="content">
+              <p>Hi ${name},</p>
+              
+              <p>Your ${planType} subscription will automatically renew in ${daysUntilRenewal} day${daysUntilRenewal === 1 ? '' : 's'}.</p>
+              
+              <div class="details-box">
+                <div class="detail-row">
+                  <span class="detail-label">Plan:</span>
+                  <span class="detail-value">${planType.charAt(0).toUpperCase() + planType.slice(1)}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Renewal Date:</span>
+                  <span class="detail-value">${new Date(renewalDate).toLocaleDateString()}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Amount:</span>
+                  <span class="detail-value">${currency} ${amount}</span>
+                </div>
+              </div>
+              
+              <p>Your payment method will be automatically charged. No action is required unless you want to make changes.</p>
+              
+              <div style="text-align: center;">
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/billing" class="btn">Manage Subscription</a>
+                <br><br>
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/billing/cancel" class="btn btn-secondary">Cancel Subscription</a>
+              </div>
+            </div>
+            
+            <div class="footer">
+              <p>Thank you for being a valued AutoDevelop.ai customer!</p>
+              <p>© 2025 AutoDevelop.ai. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    };
+
+    return this.sendEmail(msg, 'renewal-reminder');
+  }
 }
 
 module.exports = new EmailService();
