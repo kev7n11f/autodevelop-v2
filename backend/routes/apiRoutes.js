@@ -25,6 +25,10 @@ const {
   createBillingPortalSession
 } = require('../controllers/paymentController');
 
+// Authentication routes
+const authRoutes = require('./authRoutes');
+router.use('/auth', authRoutes);
+
 // Chat endpoint
 router.post('/chat', chat);
 
