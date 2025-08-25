@@ -2,8 +2,11 @@ import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react
 import { useState, useEffect } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
+<<<<<<< HEAD
 import { Helmet } from 'react-helmet';
+=======
 import { AuthProvider } from './contexts/AuthContext';
+>>>>>>> db79f9b00280321160ec194c74502181aee2d291
 import BotUI from './components/BotUI';
 import About from './components/About';
 import Contact from './components/Contact';
@@ -91,6 +94,7 @@ function FloatingActionButton() {
   );
 }
 
+<<<<<<< HEAD
 function SEO({ title, description }) {
   return (
     <Helmet>
@@ -133,7 +137,32 @@ function FloatingUpgradeButton() {
   );
 }
 
+async function handleUpgrade() {
+  // In a real app, get userId/email from auth/user context
+  const userId = localStorage.getItem('userId') || 'demo-user';
+  const email = localStorage.getItem('userEmail') || 'demo@autodevelop.ai';
+  const name = localStorage.getItem('userName') || 'Demo User';
+  try {
+    const res = await fetch('/api/payments/create-checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, email, name })
+    });
+    const data = await res.json();
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      alert('Failed to start checkout. Please try again.');
+    }
+  } catch (e) {
+    alert('Network error. Please try again.');
+  }
+}
+
+export default function App() {
+=======
 function AppContent() {
+>>>>>>> db79f9b00280321160ec194c74502181aee2d291
   const [isMailingModalOpen, setIsMailingModalOpen] = useState(false);
 
   // Check for URL parameters for confirmation states
@@ -178,7 +207,8 @@ function AppContent() {
   }
 
   return (
-    <>
+<<<<<<< HEAD
+    <Router>
       <SEO title={seoTitle} description={seoDesc} />
       <div className="app">
         <NotificationBar />
@@ -200,6 +230,13 @@ function AppContent() {
                   >
                     📧 Get Updates
                   </button>
+                  <button
+                    className="btn btn-primary"
+                    style={{ marginLeft: '1rem' }}
+                    onClick={handleUpgrade}
+                  >
+                    🚀 Upgrade / Subscribe
+                  </button>
                 </div>
               </div>
             </div>
@@ -213,7 +250,6 @@ function AppContent() {
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/terms" element={<TermsOfService />} />
-                <Route path="/login" element={<Login />} />
                 <Route path="/admin/email-list" element={<AdminEmailList />} />
               </Routes>
             </div>
@@ -221,50 +257,108 @@ function AppContent() {
         </main>
 
         <footer className="modern-footer">
+=======
+    <div className="app">
+      <NotificationBar />
+      <Navigation />
+      
+      <main className="main-content">
+        <div className="hero-section">
+>>>>>>> db79f9b00280321160ec194c74502181aee2d291
           <div className="container">
-            <div className="footer-content">
-              <div className="footer-section">
-                <h3>AutoDevelop.ai</h3>
-                <p>Transforming ideas into reality with AI-powered development.</p>
-              </div>
-              <div className="footer-section">
-                <h4>Quick Links</h4>
-                <div className="footer-links">
-                  <Link to="/about">About</Link>
-                  <Link to="/contact">Contact</Link>
-                  <Link to="/privacy">Privacy Policy</Link>
-                  <Link to="/terms">Terms of Service</Link>
-                </div>
-              </div>
-              <div className="footer-section">
-                <h4>Connect</h4>
-                <p>Ready to build something amazing?</p>
-                <Link to="/contact" className="btn btn-primary">Get Started</Link>
+            <div className="hero-content">
+              <h1 className="hero-title">
+                Transform Ideas into <span className="gradient-text">Reality</span>
+              </h1>
+              <p className="hero-subtitle">
+                Use AI to bring your vision to life — step by step, powered by you.
+              </p>
+              <div className="hero-actions">
                 <button 
-                  className="btn btn-outline"
+                  className="btn btn-secondary"
                   onClick={() => setIsMailingModalOpen(true)}
-                  style={{ marginLeft: 'var(--space-2)' }}
                 >
-                  Subscribe to Updates
+                  📧 Get Updates
                 </button>
               </div>
             </div>
-            <div className="footer-bottom">
-              <p>&copy; 2025 AutoDevelop.ai. All rights reserved.</p>
+          </div>
+        </div>
+
+        <div className="content-section">
+          <div className="container">
+            <Routes>
+              <Route path="/" element={<BotUI />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/terms" element={<TermsOfService />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/admin/email-list" element={<AdminEmailList />} />
+            </Routes>
+          </div>
+        </div>
+      </main>
+
+      <footer className="modern-footer">
+        <div className="container">
+          <div className="footer-content">
+            <div className="footer-section">
+              <h3>AutoDevelop.ai</h3>
+              <p>Transforming ideas into reality with AI-powered development.</p>
+            </div>
+            <div className="footer-section">
+              <h4>Quick Links</h4>
+              <div className="footer-links">
+                <Link to="/about">About</Link>
+                <Link to="/contact">Contact</Link>
+                <Link to="/privacy">Privacy Policy</Link>
+                <Link to="/terms">Terms of Service</Link>
+              </div>
+            </div>
+            <div className="footer-section">
+              <h4>Connect</h4>
+              <p>Ready to build something amazing?</p>
+              <Link to="/contact" className="btn btn-primary">Get Started</Link>
+              <button 
+                className="btn btn-outline"
+                onClick={() => setIsMailingModalOpen(true)}
+                style={{ marginLeft: 'var(--space-2)' }}
+              >
+                Subscribe to Updates
+              </button>
             </div>
           </div>
-        </footer>
+          <div className="footer-bottom">
+            <p>&copy; 2025 AutoDevelop.ai. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
 
+<<<<<<< HEAD
         <FloatingActionButton />
+        
         <MailingListModal 
           isOpen={isMailingModalOpen}
           onClose={() => setIsMailingModalOpen(false)}
         />
+        
         <Analytics />
         <SpeedInsights />
         <FloatingUpgradeButton />
       </div>
-    </>
+    </Router>
+=======
+      <FloatingActionButton />
+      
+      <MailingListModal 
+        isOpen={isMailingModalOpen}
+        onClose={() => setIsMailingModalOpen(false)}
+      />
+      
+      <Analytics />
+      <SpeedInsights />
+    </div>
   );
 }
 
@@ -275,5 +369,6 @@ export default function App() {
         <AppContent />
       </Router>
     </AuthProvider>
+>>>>>>> db79f9b00280321160ec194c74502181aee2d291
   );
 }
