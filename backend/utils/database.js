@@ -230,12 +230,12 @@ class Database {
     ];
     for (const col of columns) {
       await new Promise((resolve) => {
-        this.db.all(`PRAGMA table_info(payment_subscriptions)`, [], (err, rows) => {
+        this.db.get(`PRAGMA table_info(payment_subscriptions)`, [], (err, rows) => {
           if (err) return resolve();
-          const exists = Array.isArray(rows) && rows.some(r => r.name === col);
-          if (!exists) {
-            this.db.run(`ALTER TABLE payment_subscriptions ADD COLUMN ${col} TEXT`, [], () => resolve());
-          } else resolve();
+          const exists = rows.some(r => r.name === col);
+            if (!exists) {
+              this.db.run(`ALTER TABLE payment_subscriptions ADD COLUMN ${col} TEXT`, [], () => resolve());
+            } else resolve();
         });
       });
     }
@@ -245,10 +245,10 @@ class Database {
     // monthly_message_count & monthly_period_start might be missing
     const needed = ['monthly_message_count','monthly_period_start'];
     const info = await new Promise((resolve) => {
-      this.db.all(`PRAGMA table_info(usage_counters)`, [], (err, rows) => resolve(Array.isArray(rows) ? rows : []));
+      this.db.get(`PRAGMA table_info(usage_counters)`, [], (err, rows) => resolve(rows));
     });
     for (const c of needed) {
-      const exists = info.some(r => r.name === c);
+      const exists = (Array.isArray(info) ? info : []).some(r => r.name === c);
       if (!exists) {
         const ddl = c === 'monthly_message_count' ? 'INTEGER DEFAULT 0' : 'DATETIME';
         await this.runQuery(`ALTER TABLE usage_counters ADD COLUMN ${c} ${ddl}`);
@@ -662,6 +662,7 @@ class Database {
     });
   }
 
+<<<<<<< HEAD
   // Persistent usage tracking methods
   async getUserUsage(userId) {
     const sql = `SELECT user_id, message_count, period_start, monthly_message_count, monthly_period_start FROM usage_counters WHERE user_id = ?`;
@@ -669,34 +670,213 @@ class Database {
       this.db.get(sql, [userId], (err, row) => {
         if (err) return reject(err);
         resolve(row || null);
+=======
+  // User management methods for OAuth authentication
+  async createUser(userData) {
+    const { googleId, email, name, avatarUrl, locale, verifiedEmail } = userData;
+    const insertSQL = `
+      INSERT INTO users (google_id, email, name, avatar_url, locale, verified_email)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `;
+
+    return new Promise((resolve, reject) => {
+      this.db.run(insertSQL, [googleId, email, name, avatarUrl, locale, verifiedEmail], function(err) {
+        if (err) {
+          logger.error('Error creating user:', err);
+          reject(err);
+        } else {
+          logger.info(`User created with ID: ${this.lastID}`);
+          resolve({ id: this.lastID, ...userData });
+        }
+>>>>>>> db79f9b00280321160ec194c74502181aee2d291
       });
     });
   }
 
+<<<<<<< HEAD
   async resetUserUsage(userId, scope = 'daily') {
     const now = new Date().toISOString();
     if (scope === 'all') {
-      const sqlAll = `REPLACE INTO usage_counters (user_id, message_count, period_start, monthly_message_count, monthly_period_start) VALUES (?, 0, ?, 0, ?)`;
+      const sql = `REPLACE INTO usage_counters (user_id, message_count, period_start, monthly_message_count, monthly_period_start) VALUES (?, 0, ?, 0, ?)`;
       return new Promise((resolve, reject) => {
-        this.db.run(sqlAll, [userId, now, now], function(err) {
+        this.db.run(sql, [userId, now, now], function(err) {
           if (err) return reject(err);
           resolve({ userId, message_count: 0, period_start: now, monthly_message_count: 0, monthly_period_start: now });
         });
+=======
+  async getUserByGoogleId(googleId) {
+    const selectSQL = `SELECT * FROM users WHERE google_id = ?`;
+
+    return new Promise((resolve, reject) => {
+      this.db.get(selectSQL, [googleId], (err, row) => {
+        if (err) {
+          logger.error('Error getting user by Google ID:', err);
+          reject(err);
+        } else {
+          resolve(row);
+        }
+      });
+    });
+  }
+
+  async getUserByEmail(email) {
+    const selectSQL = `SELECT * FROM users WHERE email = ?`;
+
+    return new Promise((resolve, reject) => {
+      this.db.get(selectSQL, [email], (err, row) => {
+        if (err) {
+          logger.error('Error getting user by email:', err);
+          reject(err);
+        } else {
+          resolve(row);
+        }
+      });
+    });
+  }
+
+  async getUserById(id) {
+    const selectSQL = `SELECT * FROM users WHERE id = ?`;
+
+    return new Promise((resolve, reject) => {
+      this.db.get(selectSQL, [id], (err, row) => {
+        if (err) {
+          logger.error('Error getting user by ID:', err);
+          reject(err);
+        } else {
+          resolve(row);
+        }
+      });
+    });
+  }
+
+  async updateUserLastLogin(userId) {
+    const updateSQL = `UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?`;
+
+    return new Promise((resolve, reject) => {
+      this.db.run(updateSQL, [userId], function(err) {
+        if (err) {
+          logger.error('Error updating user last login:', err);
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
+  async createUserSession(sessionData) {
+    const { userId, sessionToken, refreshToken, expiresAt, ipAddress, userAgent } = sessionData;
+    const insertSQL = `
+      INSERT INTO user_sessions (user_id, session_token, refresh_token, expires_at, ip_address, user_agent)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `;
+
+    return new Promise((resolve, reject) => {
+      this.db.run(insertSQL, [userId, sessionToken, refreshToken, expiresAt, ipAddress, userAgent], function(err) {
+        if (err) {
+          logger.error('Error creating user session:', err);
+          reject(err);
+        } else {
+          logger.info(`User session created with ID: ${this.lastID}`);
+          resolve({ id: this.lastID, ...sessionData });
+        }
+      });
+    });
+  }
+
+  async getUserSession(sessionToken) {
+    const selectSQL = `
+      SELECT us.*, u.* 
+      FROM user_sessions us 
+      JOIN users u ON us.user_id = u.id 
+      WHERE us.session_token = ? AND us.expires_at > CURRENT_TIMESTAMP
+    `;
+
+    return new Promise((resolve, reject) => {
+      this.db.get(selectSQL, [sessionToken], (err, row) => {
+        if (err) {
+          logger.error('Error getting user session:', err);
+          reject(err);
+        } else {
+          resolve(row);
+        }
+      });
+    });
+  }
+
+  async updateSessionLastAccessed(sessionToken) {
+    const updateSQL = `UPDATE user_sessions SET last_accessed_at = CURRENT_TIMESTAMP WHERE session_token = ?`;
+
+    return new Promise((resolve, reject) => {
+      this.db.run(updateSQL, [sessionToken], function(err) {
+        if (err) {
+          logger.error('Error updating session last accessed:', err);
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
+  async deleteUserSession(sessionToken) {
+    const deleteSQL = `DELETE FROM user_sessions WHERE session_token = ?`;
+
+    return new Promise((resolve, reject) => {
+      this.db.run(deleteSQL, [sessionToken], function(err) {
+        if (err) {
+          logger.error('Error deleting user session:', err);
+          reject(err);
+        } else {
+          logger.info(`User session deleted: ${sessionToken.substring(0, 8)}...`);
+          resolve();
+        }
+      });
+    });
+  }
+
+  async deleteExpiredSessions() {
+    const deleteSQL = `DELETE FROM user_sessions WHERE expires_at <= CURRENT_TIMESTAMP`;
+
+    return new Promise((resolve, reject) => {
+      this.db.run(deleteSQL, [], function(err) {
+        if (err) {
+          logger.error('Error deleting expired sessions:', err);
+          reject(err);
+        } else {
+          if (this.changes > 0) {
+            logger.info(`Deleted ${this.changes} expired sessions`);
+          }
+          resolve(this.changes);
+        }
+      });
+    });
+  }
+
+  close() {
+    if (this.db) {
+      this.db.close((err) => {
+        if (err) {
+          logger.error('Error closing database:', err);
+        } else {
+          logger.info('Database connection closed');
+        }
+>>>>>>> db79f9b00280321160ec194c74502181aee2d291
       });
     }
     if (scope === 'monthly') {
-      const sqlMonthly = `UPDATE usage_counters SET monthly_message_count = 0, monthly_period_start = ? WHERE user_id = ?`;
+      const sql = `UPDATE usage_counters SET monthly_message_count = 0, monthly_period_start = ? WHERE user_id = ?`;
       return new Promise((resolve, reject) => {
-        this.db.run(sqlMonthly, [now, userId], function(err) {
+        this.db.run(sql, [now, userId], function(err) {
           if (err) return reject(err);
           resolve();
         });
       });
     }
     // daily
-    const sqlDaily = `UPDATE usage_counters SET message_count = 0, period_start = ? WHERE user_id = ?`;
+    const sql = `UPDATE usage_counters SET message_count = 0, period_start = ? WHERE user_id = ?`;
     return new Promise((resolve, reject) => {
-      this.db.run(sqlDaily, [now, userId], function(err) {
+      this.db.run(sql, [now, userId], function(err) {
         if (err) return reject(err);
         resolve();
       });
@@ -779,14 +959,40 @@ class Database {
         resolve(row);
       });
     });
-
-    return { totalUsers: totals.users, totalDailyMessages: totals.daily_messages, totalMonthlyMessages: totals.monthly_messages, activeSubscriptions: subs.active_subscriptions, totalMRR: subs.mrr };
+    return {
+      users: totals.users || 0,
+      daily_messages: totals.daily_messages || 0,
+      monthly_messages: totals.monthly_messages || 0,
+      active_subscriptions: subs.active_subscriptions || 0,
+      mrr: subs.mrr || 0,
+      timestamp: new Date().toISOString()
+    };
   }
 
-  _isPeriodExpired(start, now, period = 'day') {
-    const diff = now - start;
-    const threshold = period === 'day' ? 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000;
-    return diff > threshold;
+  async getUserDiagnostic(userId) {
+    const usage = await this.getUserUsage(userId).catch(() => null);
+    const subscription = await this.getPaymentSubscription(userId).catch(() => null);
+    const recentEvents = await this.getRecentUsageEvents(25, userId).catch(() => []);
+    return {
+      userId,
+      usage: usage ? {
+        daily: usage.message_count,
+        daily_period_start: usage.period_start,
+        monthly: usage.monthly_message_count,
+        monthly_period_start: usage.monthly_period_start
+      } : null,
+      subscription: subscription ? {
+        plan: subscription.plan_type,
+        status: subscription.status,
+        current_period_start: subscription.current_period_start,
+        current_period_end: subscription.current_period_end,
+        next_billing_date: subscription.next_billing_date,
+        amount: subscription.amount,
+        currency: subscription.currency
+      } : null,
+      recentUsageEvents: recentEvents,
+      generated_at: new Date().toISOString()
+    };
   }
 }
 
