@@ -662,15 +662,6 @@ class Database {
     });
   }
 
-<<<<<<< HEAD
-  // Persistent usage tracking methods
-  async getUserUsage(userId) {
-    const sql = `SELECT user_id, message_count, period_start, monthly_message_count, monthly_period_start FROM usage_counters WHERE user_id = ?`;
-    return new Promise((resolve, reject) => {
-      this.db.get(sql, [userId], (err, row) => {
-        if (err) return reject(err);
-        resolve(row || null);
-=======
   // User management methods for OAuth authentication
   async createUser(userData) {
     const { googleId, email, name, avatarUrl, locale, verifiedEmail } = userData;
@@ -688,22 +679,22 @@ class Database {
           logger.info(`User created with ID: ${this.lastID}`);
           resolve({ id: this.lastID, ...userData });
         }
->>>>>>> db79f9b00280321160ec194c74502181aee2d291
       });
     });
   }
 
-<<<<<<< HEAD
-  async resetUserUsage(userId, scope = 'daily') {
-    const now = new Date().toISOString();
-    if (scope === 'all') {
-      const sql = `REPLACE INTO usage_counters (user_id, message_count, period_start, monthly_message_count, monthly_period_start) VALUES (?, 0, ?, 0, ?)`;
-      return new Promise((resolve, reject) => {
-        this.db.run(sql, [userId, now, now], function(err) {
-          if (err) return reject(err);
-          resolve({ userId, message_count: 0, period_start: now, monthly_message_count: 0, monthly_period_start: now });
-        });
-=======
+  // Persistent usage tracking methods
+  async getUserUsage(userId) {
+    const sql = `SELECT user_id, message_count, period_start, monthly_message_count, monthly_period_start FROM usage_counters WHERE user_id = ?`;
+    return new Promise((resolve, reject) => {
+      this.db.get(sql, [userId], (err, row) => {
+        if (err) return reject(err);
+        resolve(row || null);
+      });
+    });
+  }
+
+  // User management methods for OAuth authentication
   async getUserByGoogleId(googleId) {
     const selectSQL = `SELECT * FROM users WHERE google_id = ?`;
 
@@ -749,104 +740,21 @@ class Database {
     });
   }
 
-  async updateUserLastLogin(userId) {
-    const updateSQL = `UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?`;
-
-    return new Promise((resolve, reject) => {
-      this.db.run(updateSQL, [userId], function(err) {
-        if (err) {
-          logger.error('Error updating user last login:', err);
-          reject(err);
-        } else {
-          resolve();
-        }
-      });
-    });
-  }
-
-  async createUserSession(sessionData) {
-    const { userId, sessionToken, refreshToken, expiresAt, ipAddress, userAgent } = sessionData;
-    const insertSQL = `
-      INSERT INTO user_sessions (user_id, session_token, refresh_token, expires_at, ip_address, user_agent)
-      VALUES (?, ?, ?, ?, ?, ?)
+  async updateUser(id, userData) {
+    const { email, name, avatarUrl, locale, verifiedEmail } = userData;
+    const updateSQL = `
+      UPDATE users 
+      SET email = ?, name = ?, avatar_url = ?, locale = ?, verified_email = ?
+      WHERE id = ?
     `;
 
     return new Promise((resolve, reject) => {
-      this.db.run(insertSQL, [userId, sessionToken, refreshToken, expiresAt, ipAddress, userAgent], function(err) {
+      this.db.run(updateSQL, [email, name, avatarUrl, locale, verifiedEmail, id], function(err) {
         if (err) {
-          logger.error('Error creating user session:', err);
+          logger.error('Error updating user:', err);
           reject(err);
         } else {
-          logger.info(`User session created with ID: ${this.lastID}`);
-          resolve({ id: this.lastID, ...sessionData });
-        }
-      });
-    });
-  }
-
-  async getUserSession(sessionToken) {
-    const selectSQL = `
-      SELECT us.*, u.* 
-      FROM user_sessions us 
-      JOIN users u ON us.user_id = u.id 
-      WHERE us.session_token = ? AND us.expires_at > CURRENT_TIMESTAMP
-    `;
-
-    return new Promise((resolve, reject) => {
-      this.db.get(selectSQL, [sessionToken], (err, row) => {
-        if (err) {
-          logger.error('Error getting user session:', err);
-          reject(err);
-        } else {
-          resolve(row);
-        }
-      });
-    });
-  }
-
-  async updateSessionLastAccessed(sessionToken) {
-    const updateSQL = `UPDATE user_sessions SET last_accessed_at = CURRENT_TIMESTAMP WHERE session_token = ?`;
-
-    return new Promise((resolve, reject) => {
-      this.db.run(updateSQL, [sessionToken], function(err) {
-        if (err) {
-          logger.error('Error updating session last accessed:', err);
-          reject(err);
-        } else {
-          resolve();
-        }
-      });
-    });
-  }
-
-  async deleteUserSession(sessionToken) {
-    const deleteSQL = `DELETE FROM user_sessions WHERE session_token = ?`;
-
-    return new Promise((resolve, reject) => {
-      this.db.run(deleteSQL, [sessionToken], function(err) {
-        if (err) {
-          logger.error('Error deleting user session:', err);
-          reject(err);
-        } else {
-          logger.info(`User session deleted: ${sessionToken.substring(0, 8)}...`);
-          resolve();
-        }
-      });
-    });
-  }
-
-  async deleteExpiredSessions() {
-    const deleteSQL = `DELETE FROM user_sessions WHERE expires_at <= CURRENT_TIMESTAMP`;
-
-    return new Promise((resolve, reject) => {
-      this.db.run(deleteSQL, [], function(err) {
-        if (err) {
-          logger.error('Error deleting expired sessions:', err);
-          reject(err);
-        } else {
-          if (this.changes > 0) {
-            logger.info(`Deleted ${this.changes} expired sessions`);
-          }
+          logger.info(`User updated: ${id}`);
           resolve(this.changes);
         }
       });
@@ -861,8 +769,19 @@ class Database {
         } else {
           logger.info('Database connection closed');
         }
->>>>>>> db79f9b00280321160ec194c74502181aee2d291
       });
+    }
+  }
+
+  async resetUserUsage(userId, scope = 'daily') {
+    const now = new Date().toISOString();
+    if (scope === 'all') {
+      const sql = `REPLACE INTO usage_counters (user_id, message_count, period_start, monthly_message_count, monthly_period_start) VALUES (?, 0, ?, 0, ?)`;
+      return new Promise((resolve, reject) => {
+        this.db.run(sql, [userId, now, now], function(err) {
+          if (err) return reject(err);
+          resolve({ userId, message_count: 0, period_start: now, monthly_message_count: 0, monthly_period_start: now });
+        });      });
     }
     if (scope === 'monthly') {
       const sql = `UPDATE usage_counters SET monthly_message_count = 0, monthly_period_start = ? WHERE user_id = ?`;
