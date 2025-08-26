@@ -9,12 +9,6 @@ import {
 import { getPaywallPrompt } from '../utils/subscriptionPrompt';
 import { useAuth } from '../contexts/AuthContext';
 
-export default function BotUI() {
-  const { isAuthenticated, user, loginWithGoogle } = useAuth();
-  const [input, setInput] = useState('');
-  const [log, setLog] = useState([
-    createFormattedMessage('Hello! I\'m your AI development assistant. How can I help you bring your ideas to life today?', MESSAGE_TYPES.NORMAL)
-  ]);
 const FREE_MESSAGE_LIMIT = 5;
 
 export default function BotUI() {
@@ -30,7 +24,7 @@ export default function BotUI() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
-  const [checkingSubscription, setCheckingSubscription] = useState(false);
+  const [checkingSubscription] = useState(false); // eslint-disable-line no-unused-vars
   const messagesEndRef = useRef(null);
   const liveRegionRef = useRef(null);
 
@@ -67,7 +61,7 @@ export default function BotUI() {
         } else if (res.status === 404) {
           setIsSubscribed(false);
         }
-      } catch (e) {
+      } catch {
         console.warn('Failed to check subscription status', e);
       } finally {
         setCheckingSubscription(false);
@@ -111,7 +105,7 @@ export default function BotUI() {
       } else {
         alert(data.error || 'Failed to start checkout');
       }
-    } catch (err) {
+    } catch {
       alert('Network error starting checkout');
     }
   };
@@ -133,7 +127,7 @@ export default function BotUI() {
       } else {
         alert(data.error || 'Could not open billing portal');
       }
-    } catch (e) {
+    } catch {
       alert('Network error opening billing portal');
     }
   };
@@ -197,27 +191,25 @@ export default function BotUI() {
   };
   const send = async () => {
     if (!input.trim()) return;
-  if (subscriptionRequired && !isSubscribed) return;
+    if (subscriptionRequired && !isSubscribed) return;
     
     const userMsg = input.trim();
-    // Log the user's message attempt before checking subscription
-    setLog(prev => [...prev, { from: 'user', text: userMsg }]);
-    if (subscriptionRequired && !isSubscribed) {
-      // Optionally, provide feedback to the user
-      setLog(prev => [...prev, { ...ERROR_TEMPLATES.SUBSCRIPTION_REQUIRED(), from: 'bot' }]);
+
+    // Track user message count with gating logic and handle paywall gating inside handleMessageCountAdvance
+    let paywallTriggered = false;
+    setUserMessageCount(count => {
+      const result = handleMessageCountAdvance(count);
+      if (result === count) {
+        // Paywall was triggered and count was not incremented
+        paywallTriggered = true;
+      }
+      return result;
+    });
+    if (paywallTriggered) {
       setInput('');
       return;
     }
-    // Log the user's message attempt before checking subscription
-    setLog(prev => [...prev, { from: 'user', text: userMsg }]);
-    
-    if (subscriptionRequired && !isSubscribed) {
-      // Optionally, provide feedback to the user
-      setLog(prev => [...prev, { ...ERROR_TEMPLATES.SUBSCRIPTION_REQUIRED(), from: 'bot' }]);
-      setInput('');
-      return;
-    }
-    
+
     // Client-side validation
     if (userMsg.length > 2000) {
       const errorMessage = ERROR_TEMPLATES.MESSAGE_TOO_LONG(userMsg.length, 2000);
@@ -277,26 +269,6 @@ function TodoApp() {
     </div>
   );
 }
-  // Track user message count with gating logic
-  setUserMessageCount(count => handleMessageCountAdvance(count));
-    if (!isSubscribed && (userMessageCount >= FREE_MESSAGE_LIMIT) && !paywallDismissed) {
-      setSubscriptionRequired(true);
-      const prompt = getPaywallPrompt();
-      const augmented = { ...prompt };
-      if (!isAuthenticated) {
-        augmented.actions = [
-          { id: 'login', label: 'Login to Subscribe', icon: '🔑', variant: 'primary' },
-          ...(prompt.actions || [])
-        ];
-      } else if (isAuthenticated && !isSubscribed) {
-        augmented.actions = [
-          { id: 'subscribe-now', label: 'Subscribe Now', icon: '💳', variant: 'primary' },
-          ...(prompt.actions || [])
-        ];
-      }
-      setLog(prev => [...prev, { ...augmented, from: 'bot' }]);
-      return;
-    }
 \`\`\`
 
 **Next Steps:**
@@ -413,10 +385,10 @@ function TodoApp() {
         ];
       }
       setLog(prev => [...prev, { ...augmented, from: 'bot' }]);
-      return count; // freeze
+      return count; // freeze count, paywall triggered
     }
     return newCount;
-  }, []);
+  }, [isSubscribed, FREE_MESSAGE_LIMIT, paywallDismissed, isAuthenticated]);
 
   // Helper for gating logic when advancing message count
   const remainingMessages = useMemo(() => {
