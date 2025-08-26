@@ -3,11 +3,13 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"nodemon backend/server.js\" \"yarn --cwd frontend dev\"",
+    "dev": "concurrently \"nodemon backend/server.js\" \"npm --prefix frontend run dev\"",
     "build": "cd frontend && npm install && npm run build",
     "start": "node backend/server.js",
-    "build:frontend": "yarn --cwd frontend build",
-    "preview": "yarn --cwd frontend preview"
+    "build:frontend": "npm --prefix frontend run build",
+    "preview": "npm --prefix frontend run preview",
+    "lint": "npm --prefix frontend run lint",
+    "install:all": "npm install && npm --prefix frontend install"
   },
   "dependencies": {
     "@sendgrid/mail": "^8.1.5",
