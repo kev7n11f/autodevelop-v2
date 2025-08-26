@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import './BotUI.css';
 import EnhancedMessageBubble from './EnhancedMessageBubble';
 import { 
@@ -6,14 +6,27 @@ import {
   ERROR_TEMPLATES, 
   MESSAGE_TYPES 
 } from '../utils/messageFormatter';
+import { getPaywallPrompt } from '../utils/subscriptionPrompt';
+import { useAuth } from '../contexts/AuthContext';
+
+const FREE_MESSAGE_LIMIT = 5;
 
 export default function BotUI() {
+  const { isAuthenticated, user, loginWithGoogle } = useAuth();
   const [input, setInput] = useState('');
   const [log, setLog] = useState([
     createFormattedMessage('Hello! I\'m your AI development assistant. How can I help you bring your ideas to life today?', MESSAGE_TYPES.NORMAL)
   ]);
+  const [userMessageCount, setUserMessageCount] = useState(0);
+  const [subscriptionRequired, setSubscriptionRequired] = useState(false);
+  const [paywallDismissed, setPaywallDismissed] = useState(() => {
+    try { return localStorage.getItem('paywallDismissed') === '1'; } catch { return false; }
+  });
   const [isLoading, setIsLoading] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [checkingSubscription] = useState(false); // eslint-disable-line no-unused-vars
   const messagesEndRef = useRef(null);
+  const liveRegionRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -21,11 +34,125 @@ export default function BotUI() {
 
   useEffect(() => {
     scrollToBottom();
+    // Accessibility: announce latest bot message
+    const last = log[log.length - 1];
+    if (last && last.from === 'bot' && liveRegionRef.current) {
+      liveRegionRef.current.textContent = last.text?.slice(0, 300) || '';
+    }
   }, [log]);
+
+  // Fetch subscription status when user changes or authenticates
+  const fetchSubscription = useCallback(async () => {
+      if (!isAuthenticated || !user?.id) {
+        setIsSubscribed(false);
+        return;
+      }
+      try {
+        setCheckingSubscription(true);
+        const res = await fetch(`/api/payments/subscription/${user.id}`);
+        if (res.ok) {
+          const data = await res.json();
+            if (data?.subscription?.status === 'active') {
+              setIsSubscribed(true);
+              setSubscriptionRequired(false);
+            } else {
+              setIsSubscribed(false);
+            }
+        } else if (res.status === 404) {
+          setIsSubscribed(false);
+        }
+      } catch {
+        console.warn('Failed to check subscription status', e);
+      } finally {
+        setCheckingSubscription(false);
+      }
+    }, [isAuthenticated, user?.id]);
+
+  useEffect(() => { fetchSubscription(); }, [fetchSubscription]);
+
+  // Detect Stripe checkout success (session_id param) and refresh subscription
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get('session_id');
+    if (sessionId) {
+      // Remove param silently
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+      // Re-check subscription after short delay (Stripe webhook processing time)
+      setTimeout(() => fetchSubscription(), 1500);
+    }
+  }, [fetchSubscription]);
+
+  const startCheckout = async () => {
+    if (!isAuthenticated) {
+      loginWithGoogle();
+      return;
+    }
+    try {
+      const body = {
+        userId: user?.id || user?._id || 'unknown-user',
+        email: user?.email || localStorage.getItem('userEmail') || 'user@example.com',
+        name: user?.name || user?.displayName || 'User'
+      };
+      const res = await fetch('/api/payments/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.error || 'Failed to start checkout');
+      }
+    } catch {
+      alert('Network error starting checkout');
+    }
+  };
+
+  const openBillingPortal = async () => {
+    if (!isAuthenticated) {
+      loginWithGoogle();
+      return;
+    }
+    try {
+      const res = await fetch('/api/payments/stripe/portal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerId: user?.stripeCustomerId || user?.stripe_customer_id })
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.error || 'Could not open billing portal');
+      }
+    } catch {
+      alert('Network error opening billing portal');
+    }
+  };
 
   // Handle action button clicks
   const handleActionClick = (actionId, actionData, message) => {
     switch (actionId) {
+      case 'maybe-later': {
+        setPaywallDismissed(true);
+        try { localStorage.setItem('paywallDismissed', '1'); } catch {}
+        setSubscriptionRequired(false);
+        break;
+      }
+      case 'subscribe-now': {
+        startCheckout();
+        break;
+      }
+      case 'login': {
+        loginWithGoogle();
+        break;
+      }
+      case 'manage-billing': {
+        openBillingPortal();
+        break;
+      }
       case 'retry': {
         // Retry the last user message
         const lastUserMessage = log.filter(msg => msg.from === 'user').pop();
@@ -64,9 +191,25 @@ export default function BotUI() {
   };
   const send = async () => {
     if (!input.trim()) return;
+    if (subscriptionRequired && !isSubscribed) return;
     
     const userMsg = input.trim();
-    
+
+    // Track user message count with gating logic and handle paywall gating inside handleMessageCountAdvance
+    let paywallTriggered = false;
+    setUserMessageCount(count => {
+      const result = handleMessageCountAdvance(count);
+      if (result === count) {
+        // Paywall was triggered and count was not incremented
+        paywallTriggered = true;
+      }
+      return result;
+    });
+    if (paywallTriggered) {
+      setInput('');
+      return;
+    }
+
     // Client-side validation
     if (userMsg.length > 2000) {
       const errorMessage = ERROR_TEMPLATES.MESSAGE_TOO_LONG(userMsg.length, 2000);
@@ -223,6 +366,41 @@ function TodoApp() {
     }
   };
 
+  // Helper for gating logic when advancing message count
+  const handleMessageCountAdvance = useCallback((count) => {
+    const newCount = count + 1;
+    if (!isSubscribed && newCount > FREE_MESSAGE_LIMIT && !paywallDismissed) {
+      setSubscriptionRequired(true);
+      const prompt = getPaywallPrompt();
+      const augmented = { ...prompt };
+      if (!isAuthenticated) {
+        augmented.actions = [
+          { id: 'login', label: 'Login to Subscribe', icon: '🔑', variant: 'primary' },
+          ...(prompt.actions || [])
+        ];
+      } else {
+        augmented.actions = [
+          { id: 'subscribe-now', label: 'Subscribe Now', icon: '💳', variant: 'primary' },
+          ...(prompt.actions || [])
+        ];
+      }
+      setLog(prev => [...prev, { ...augmented, from: 'bot' }]);
+      return count; // freeze count, paywall triggered
+    }
+    return newCount;
+  }, [isSubscribed, FREE_MESSAGE_LIMIT, paywallDismissed, isAuthenticated]);
+
+  // Helper for gating logic when advancing message count
+  const remainingMessages = useMemo(() => {
+    if (isSubscribed) return Infinity;
+    return Math.max(FREE_MESSAGE_LIMIT - userMessageCount, 0);
+  }, [FREE_MESSAGE_LIMIT, isSubscribed, userMessageCount]);
+
+  const usagePercent = useMemo(() => {
+    if (isSubscribed) return 100;
+    return Math.min(100, (userMessageCount / FREE_MESSAGE_LIMIT) * 100);
+  }, [userMessageCount, FREE_MESSAGE_LIMIT, isSubscribed]);
+
   const exampleQuestions = [
     "Build a todo app with React",
     "Create a landing page for my startup",
@@ -248,6 +426,8 @@ function TodoApp() {
         </div>
 
         <div className="chat-messages">
+          {/* aria-live region for screen readers */}
+          <div ref={liveRegionRef} aria-live="polite" style={{position:'absolute', left:'-9999px', top:'-9999px'}} />
           {log.map((message, index) => (
             <div 
               key={index} 
@@ -317,10 +497,10 @@ function TodoApp() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Describe your project or ask for help..."
+              placeholder={subscriptionRequired && !paywallDismissed ? "Subscribe to continue..." : "Describe your project or ask for help..."}
+              disabled={isLoading || (subscriptionRequired && !paywallDismissed)}
               className="message-input"
               rows="1"
-              disabled={isLoading}
             />
             <button 
               onClick={send} 
@@ -333,8 +513,22 @@ function TodoApp() {
           </div>
           
           <div className="input-hint">
-            Press Enter to send • Shift+Enter for new line
+            {isSubscribed ? 'Pro subscriber – unlimited messages' : (
+              subscriptionRequired && !paywallDismissed
+                ? 'Upgrade required to continue'
+                : `${remainingMessages} free message${remainingMessages === 1 ? '' : 's'} left`
+            )} • Press Enter to send • Shift+Enter for new line
+            {isSubscribed && (
+              <button onClick={openBillingPortal} className="manage-billing-btn" style={{ marginLeft: 8 }}>
+                Manage Billing
+              </button>
+            )}
           </div>
+          {!isSubscribed && (
+            <div className="usage-bar" style={{marginTop:4, height:6, background:'var(--bg-secondary)', borderRadius:4, overflow:'hidden'}}>
+              <div style={{width:`${usagePercent}%`, height:'100%', background: usagePercent > 90 ? '#dc2626' : usagePercent > 60 ? '#f59e0b' : 'var(--primary-color)', transition:'width .3s'}} />
+            </div>
+          )}
         </div>
       </div>
     </div>
