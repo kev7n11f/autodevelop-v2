@@ -15,6 +15,7 @@ import MailingListModal from './components/MailingListModal';
 import NotificationBar from './components/NotificationBar';
 import AdminEmailList from './components/AdminEmailList';
 import { useAuth } from './contexts/AuthContext';
+import { handleUpgrade } from './utils/upgradeUtils';
 import './App.css';
 
 function Navigation() {
@@ -98,26 +99,6 @@ function SEO({ title, description }) {
 }
 
 function FloatingUpgradeButton() {
-  async function handleUpgrade() {
-    const userId = localStorage.getItem('userId') || 'demo-user';
-    const email = localStorage.getItem('userEmail') || 'demo@autodevelop.ai';
-    const name = localStorage.getItem('userName') || 'Demo User';
-    try {
-      const res = await fetch('/api/payments/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, email, name })
-      });
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        alert('Failed to start checkout. Please try again.');
-      }
-    } catch (e) {
-      alert('Network error. Please try again.');
-    }
-  }
   return (
     <button
       className="btn btn-primary floating-upgrade-btn"
@@ -172,27 +153,6 @@ function AppContent() {
   } else if (location.pathname === '/terms') {
     seoTitle = 'Terms of Service – AutoDevelop.ai';
     seoDesc = 'Review the terms of service for using AutoDevelop.ai and our AI-powered development tools.';
-  }
-
-  async function handleUpgrade() {
-    const userId = localStorage.getItem('userId') || 'demo-user';
-    const email = localStorage.getItem('userEmail') || 'demo@autodevelop.ai';
-    const name = localStorage.getItem('userName') || 'Demo User';
-    try {
-      const res = await fetch('/api/payments/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, email, name })
-      });
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        alert('Failed to start checkout. Please try again.');
-      }
-    } catch (e) {
-      alert('Network error. Please try again.');
-    }
   }
 
   return (

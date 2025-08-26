@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import './BotUI.css';
 import EnhancedMessageBubble from './EnhancedMessageBubble';
+import UsageBar from './UsageBar';
 import { 
   createFormattedMessage, 
   ERROR_TEMPLATES, 
@@ -13,6 +14,7 @@ export default function BotUI() {
     createFormattedMessage('Hello! I\'m your AI development assistant. How can I help you bring your ideas to life today?', MESSAGE_TYPES.NORMAL)
   ]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showUsageBar, setShowUsageBar] = useState(false);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -160,7 +162,15 @@ function TodoApp() {
         // Handle specific error responses with enhanced templates
         let errorMessage;
         
-        if (res.status === 429) {
+        if (res.status === 402) {
+          // Paywall hit - show upgrade message
+          setShowUsageBar(true);
+          const upgradeMessage = ERROR_TEMPLATES.RATE_LIMIT('upgrade needed');
+          errorMessage = createFormattedMessage(
+            `🚫 **Free Limit Reached**\n\n${data.message || 'You have reached your free usage limit.'}\n\n💡 **Upgrade to continue chatting unlimited!**\n\n[Click here to upgrade](/upgrade)`,
+            MESSAGE_TYPES.ERROR
+          );
+        } else if (res.status === 429) {
           const retryAfter = data.retryAfter || data.timeRemaining || '60 seconds';
           errorMessage = ERROR_TEMPLATES.RATE_LIMIT(retryAfter);
         } else if (res.status === 503) {
@@ -202,6 +212,12 @@ function TodoApp() {
         from: 'bot',
         responseTime: data.meta?.responseTime
       }]);
+
+      // Store meta data for usage tracking
+      if (data.meta) {
+        sessionStorage.setItem('lastChatMeta', JSON.stringify(data.meta));
+        setShowUsageBar(true);
+      }
       
     } catch (networkError) {
       console.error('Network error:', networkError);
@@ -295,6 +311,8 @@ function TodoApp() {
         </div>
 
         <div className="chat-input-container">
+          <UsageBar isVisible={showUsageBar} />
+          
           {log.length === 1 && (
             <div className="example-questions">
               <p>Try asking:</p>
