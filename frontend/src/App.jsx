@@ -2,7 +2,6 @@ import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react
 import { useState, useEffect } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
-import { Helmet, HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './contexts/AuthContext';
 import BotUI from './components/BotUI';
 import About from './components/About';
@@ -283,15 +282,8 @@ function AppContent() {
     </div>
   );
 }
-
 export default function App() {
   return (
-    <HelmetProvider>
-      <AuthProvider>
-        <Router>
-          <AppContent />
-        </Router>
-      </AuthProvider>
-    </HelmetProvider>
+
   );
 }
