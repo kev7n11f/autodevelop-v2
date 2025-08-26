@@ -230,9 +230,9 @@ class Database {
     ];
     for (const col of columns) {
       await new Promise((resolve) => {
-        this.db.get(`PRAGMA table_info(payment_subscriptions)`, [], (err, rows) => {
+        this.db.all(`PRAGMA table_info(payment_subscriptions)`, [], (err, rows) => {
           if (err) return resolve();
-          const exists = rows.some(r => r.name === col);
+          const exists = Array.isArray(rows) && rows.some(r => r.name === col);
             if (!exists) {
               this.db.run(`ALTER TABLE payment_subscriptions ADD COLUMN ${col} TEXT`, [], () => resolve());
             } else resolve();
@@ -245,7 +245,7 @@ class Database {
     // monthly_message_count & monthly_period_start might be missing
     const needed = ['monthly_message_count','monthly_period_start'];
     const info = await new Promise((resolve) => {
-      this.db.get(`PRAGMA table_info(usage_counters)`, [], (err, rows) => resolve(rows));
+      this.db.all(`PRAGMA table_info(usage_counters)`, [], (err, rows) => resolve(rows));
     });
     for (const c of needed) {
       const exists = (Array.isArray(info) ? info : []).some(r => r.name === c);
@@ -683,18 +683,6 @@ class Database {
     });
   }
 
-  // Persistent usage tracking methods
-  async getUserUsage(userId) {
-    const sql = `SELECT user_id, message_count, period_start, monthly_message_count, monthly_period_start FROM usage_counters WHERE user_id = ?`;
-    return new Promise((resolve, reject) => {
-      this.db.get(sql, [userId], (err, row) => {
-        if (err) return reject(err);
-        resolve(row || null);
-      });
-    });
-  }
-
-  // User management methods for OAuth authentication
   async getUserByGoogleId(googleId) {
     const selectSQL = `SELECT * FROM users WHERE google_id = ?`;
 
@@ -706,6 +694,38 @@ class Database {
         } else {
           resolve(row);
         }
+      });
+    });
+  }
+
+  // Persistent usage tracking methods
+  async getUserUsage(userId) {
+    const sql = `SELECT user_id, message_count, period_start, monthly_message_count, monthly_period_start FROM usage_counters WHERE user_id = ?`;
+    return new Promise((resolve, reject) => {
+      this.db.get(sql, [userId], (err, row) => {
+        if (err) return reject(err);
+        resolve(row || null);
+      });
+    });
+  }
+
+  async resetUserUsage(userId, scope = 'daily') {
+    const now = new Date().toISOString();
+    if (scope === 'all') {
+      const sql = `REPLACE INTO usage_counters (user_id, message_count, period_start, monthly_message_count, monthly_period_start) VALUES (?, 0, ?, 0, ?)`;
+      return new Promise((resolve, reject) => {
+        this.db.run(sql, [userId, now, now], function(err) {
+          if (err) return reject(err);
+          resolve({ userId, message_count: 0, period_start: now, monthly_message_count: 0, monthly_period_start: now });
+        });
+      });
+    }
+    // For other scopes (daily only), reset just daily counters  
+    const sql = `REPLACE INTO usage_counters (user_id, message_count, period_start, monthly_message_count, monthly_period_start) VALUES (?, 0, ?, COALESCE((SELECT monthly_message_count FROM usage_counters WHERE user_id = ?), 0), COALESCE((SELECT monthly_period_start FROM usage_counters WHERE user_id = ?), ?))`;
+    return new Promise((resolve, reject) => {
+      this.db.run(sql, [userId, now, userId, userId, now], function(err) {
+        if (err) return reject(err);
+        resolve({ userId, message_count: 0, period_start: now });
       });
     });
   }
@@ -771,147 +791,7 @@ class Database {
         }
       });
     }
-  }
 
-  async resetUserUsage(userId, scope = 'daily') {
-    const now = new Date().toISOString();
-    if (scope === 'all') {
-      const sql = `REPLACE INTO usage_counters (user_id, message_count, period_start, monthly_message_count, monthly_period_start) VALUES (?, 0, ?, 0, ?)`;
-      return new Promise((resolve, reject) => {
-        this.db.run(sql, [userId, now, now], function(err) {
-          if (err) return reject(err);
-          resolve({ userId, message_count: 0, period_start: now, monthly_message_count: 0, monthly_period_start: now });
-        });      });
-    }
-    if (scope === 'monthly') {
-      const sql = `UPDATE usage_counters SET monthly_message_count = 0, monthly_period_start = ? WHERE user_id = ?`;
-      return new Promise((resolve, reject) => {
-        this.db.run(sql, [now, userId], function(err) {
-          if (err) return reject(err);
-          resolve();
-        });
-      });
-    }
-    // daily
-    const sql = `UPDATE usage_counters SET message_count = 0, period_start = ? WHERE user_id = ?`;
-    return new Promise((resolve, reject) => {
-      this.db.run(sql, [now, userId], function(err) {
-        if (err) return reject(err);
-        resolve();
-      });
-    });
-  }
-
-  async incrementUserUsage(userId, period = 'day') {
-    const existing = await this.getUserUsage(userId);
-    const now = new Date();
-    if (existing) {
-      const periodStart = new Date(existing.period_start);
-      const monthStart = new Date(existing.monthly_period_start || existing.period_start);
-      if (this._isPeriodExpired(periodStart, now, 'day')) {
-        await this.resetUserUsage(userId, 'daily');
-      }
-      if (this._isPeriodExpired(monthStart, now, 'month')) {
-        await this.resetUserUsage(userId, 'monthly');
-      }
-    } else {
-      // create baseline row
-      const baseline = `INSERT OR REPLACE INTO usage_counters (user_id, message_count, period_start, monthly_message_count, monthly_period_start) VALUES (?, 0, ?, 0, ?)`;
-      const iso = new Date().toISOString();
-      await this.runQuery(baseline, [userId, iso, iso]);
-    }
-    const updateSQL = `UPDATE usage_counters SET message_count = message_count + 1, monthly_message_count = monthly_message_count + 1 WHERE user_id = ?`;
-    await new Promise((resolve, reject) => {
-      this.db.run(updateSQL, [userId], function(err) { if (err) return reject(err); resolve(); });
-    });
-    const updated = await this.getUserUsage(userId);
-    return { messageCount: updated.message_count, periodStart: updated.period_start, monthlyCount: updated.monthly_message_count };
-  }
-
-  async applyUsageDeltas(deltas) {
-    // deltas: [{ userId, dailyDelta, monthlyDelta }]
-    if (!deltas.length) return;
-    await this.runQuery('BEGIN TRANSACTION');
-    try {
-      for (const d of deltas) {
-        const ensure = `INSERT OR IGNORE INTO usage_counters (user_id, message_count, period_start, monthly_message_count, monthly_period_start) VALUES (?,0, CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP)`;
-        await this.runQuery(ensure, [d.userId]);
-        const update = `UPDATE usage_counters SET message_count = message_count + ?, monthly_message_count = monthly_message_count + ? WHERE user_id = ?`;
-        await this.runQuery(update, [d.dailyDelta || 0, d.monthlyDelta || 0, d.userId]);
-      }
-      await this.runQuery('COMMIT');
-    } catch (e) {
-      await this.runQuery('ROLLBACK');
-      throw e;
-    }
-  }
-
-  async logUsageEvent({ userId, eventType, delta = 0, dailyCount, monthlyCount, ip, source = 'chat', meta = {} }) {
-    const sql = `INSERT INTO usage_events (user_id, event_type, daily_count, monthly_count, delta, ip, source, meta) VALUES (?,?,?,?,?,?,?,?)`;
-    try {
-      await this.runQuery(sql, [userId, eventType, dailyCount, monthlyCount, delta, ip, source, JSON.stringify(meta)]);
-    } catch (e) {
-      logger.warn('Failed to log usage event', { userId, eventType, error: e.message });
-    }
-  }
-
-  async getRecentUsageEvents(limit = 50, userId) {
-    let sql = `SELECT * FROM usage_events`;
-    const params = [];
-    if (userId) { sql += ' WHERE user_id = ?'; params.push(userId); }
-    sql += ' ORDER BY id DESC LIMIT ?'; params.push(limit);
-    return new Promise((resolve, reject) => {
-      this.db.all(sql, params, (err, rows) => err ? reject(err) : resolve(rows));
-    });
-  }
-
-  async getUsageStats() {
-    const totals = await new Promise((resolve) => {
-      this.db.get(`SELECT COUNT(*) as users, SUM(message_count) as daily_messages, SUM(monthly_message_count) as monthly_messages FROM usage_counters`, [], (err, row) => {
-        if (err) return resolve({ users:0,daily_messages:0,monthly_messages:0 });
-        resolve(row);
-      });
-    });
-    const subs = await new Promise((resolve) => {
-      this.db.get(`SELECT COUNT(*) as active_subscriptions, SUM(amount) as mrr FROM payment_subscriptions WHERE status IN ('active','trial')`, [], (err, row) => {
-        if (err) return resolve({ active_subscriptions: 0, mrr: 0 });
-        resolve(row);
-      });
-    });
-    return {
-      users: totals.users || 0,
-      daily_messages: totals.daily_messages || 0,
-      monthly_messages: totals.monthly_messages || 0,
-      active_subscriptions: subs.active_subscriptions || 0,
-      mrr: subs.mrr || 0,
-      timestamp: new Date().toISOString()
-    };
-  }
-
-  async getUserDiagnostic(userId) {
-    const usage = await this.getUserUsage(userId).catch(() => null);
-    const subscription = await this.getPaymentSubscription(userId).catch(() => null);
-    const recentEvents = await this.getRecentUsageEvents(25, userId).catch(() => []);
-    return {
-      userId,
-      usage: usage ? {
-        daily: usage.message_count,
-        daily_period_start: usage.period_start,
-        monthly: usage.monthly_message_count,
-        monthly_period_start: usage.monthly_period_start
-      } : null,
-      subscription: subscription ? {
-        plan: subscription.plan_type,
-        status: subscription.status,
-        current_period_start: subscription.current_period_start,
-        current_period_end: subscription.current_period_end,
-        next_billing_date: subscription.next_billing_date,
-        amount: subscription.amount,
-        currency: subscription.currency
-      } : null,
-      recentUsageEvents: recentEvents,
-      generated_at: new Date().toISOString()
-    };
   }
 }
 
