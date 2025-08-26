@@ -405,7 +405,7 @@ function TodoApp() {
         ];
       }
       setLog(prev => [...prev, { ...augmented, from: 'bot' }]);
-      return currentCount; // freeze
+      return count; // freeze
     }
     return newCount;
   }, []);
