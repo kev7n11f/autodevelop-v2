@@ -2,7 +2,15 @@ const database = require('../utils/database');
 const emailService = require('../utils/emailService');
 const logger = require('../utils/logger');
 const { updateSubscriptionPeriodAfterPayment } = require('../utils/dateUtils');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY || '');
+
+// Initialize Stripe only if API key is provided
+let stripe = null;
+if (process.env.STRIPE_SECRET_KEY) {
+  stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+  logger.info('Stripe client initialized successfully');
+} else {
+  logger.warn('Stripe API key not configured. Payment functionality will be limited.');
+}
 
 // Input validation helpers
 const validatePaymentData = (data) => {
@@ -320,6 +328,13 @@ const checkUpcomingRenewals = async (req, res) => {
 // Create Stripe Checkout Session for subscription
 const createStripeCheckoutSession = async (req, res) => {
   try {
+    if (!stripe) {
+      return res.status(500).json({ 
+        error: 'Stripe not configured',
+        message: 'Payment processing is not available in this environment' 
+      });
+    }
+
     const { userId, email, name, priceId } = req.body;
     if (!userId || !email || !name) {
       return res.status(400).json({ error: 'userId, email, name required' });
@@ -356,6 +371,13 @@ const createStripeCheckoutSession = async (req, res) => {
 // Customer portal session
 const createBillingPortalSession = async (req, res) => {
   try {
+    if (!stripe) {
+      return res.status(500).json({ 
+        error: 'Stripe not configured',
+        message: 'Billing portal is not available in this environment' 
+      });
+    }
+
     const { customerId, returnUrl } = req.body;
     if (!customerId) return res.status(400).json({ error: 'customerId required' });
 
@@ -372,6 +394,11 @@ const createBillingPortalSession = async (req, res) => {
 
 // Stripe webhook handler (raw body route) with idempotency persistence
 const stripeWebhook = async (req, res) => {
+  if (!stripe) {
+    logger.warn('Stripe webhook received but Stripe not configured');
+    return res.status(500).json({ error: 'Stripe not configured' });
+  }
+
   const sig = req.headers['stripe-signature'];
   let event;
   try {
