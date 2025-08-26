@@ -182,7 +182,7 @@ const EnhancedMessageBubble = ({ message, onActionClick }) => {
         )}
       </div>
 
-      {/* Action buttons (for any message with actions) */}
+      {/* Action buttons (for any message with actions, regardless of type) */}
       {actions && actions.length > 0 && (
         <MessageActions 
           actions={actions} 
