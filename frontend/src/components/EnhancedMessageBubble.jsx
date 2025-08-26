@@ -143,11 +143,15 @@ const MessageActions = ({ actions, onActionClick }) => {
  */
 const EnhancedMessageBubble = ({ message, onActionClick }) => {
   const { text, template, structure, actions, isError, type } = message;
-  // Only show type header for errors, warnings, info, or success, not for normal
-  const showTypeHeader = (isError || (type && type !== 'normal')) && template && template.prefix;
+
+  // Only show type header for non-normal types with a non-empty prefix
+  const showTypeHeader = [
+    'error', 'warning', 'info', 'success'
+  ].includes(type) && template && template.prefix;
+
   // Determine message class
-  const messageClass = isError ? 'error-bubble' : 
-                     (type && type !== 'normal' && template ? template.className : 'message-normal');
+  const messageClass = isError ? 'error-bubble' :
+    (template && type !== 'normal' ? template.className : 'message-normal');
 
   // Handle action clicks
   const handleActionClick = (actionId, actionData) => {
@@ -158,13 +162,14 @@ const EnhancedMessageBubble = ({ message, onActionClick }) => {
 
   return (
     <div className={`message-bubble enhanced-bubble ${messageClass}`}>
-      {/* Message type indicator */}
+      {/* Message type indicator (only for non-normal types with prefix) */}
       {showTypeHeader && (
         <div className="message-type-header">
           <span className="message-type-icon">{template.icon}</span>
           <span className="message-type-label">{template.prefix}</span>
         </div>
       )}
+
       {/* Message content */}
       <div className="message-main-content">
         {structure && structure.hasStructure ? (
@@ -176,8 +181,9 @@ const EnhancedMessageBubble = ({ message, onActionClick }) => {
           <div className="message-simple-text">{text}</div>
         )}
       </div>
-      {/* Action buttons */}
-      {actions && (
+
+      {/* Action buttons (for any message with actions, regardless of type) */}
+      {actions && actions.length > 0 && (
         <MessageActions 
           actions={actions} 
           onActionClick={handleActionClick} 
