@@ -195,12 +195,6 @@ export default function BotUI() {
     const userMsg = input.trim();
     // Log the user's message attempt before checking subscription
     setLog(prev => [...prev, { from: 'user', text: userMsg }]);
-    if (subscriptionRequired && !isSubscribed) {
-      // Optionally, provide feedback to the user
-      setLog(prev => [...prev, { ...ERROR_TEMPLATES.SUBSCRIPTION_REQUIRED(), from: 'bot' }]);
-      setInput('');
-      return;
-    }
     
     // Client-side validation
     if (userMsg.length > 2000) {
