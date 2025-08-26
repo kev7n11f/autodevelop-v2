@@ -60,7 +60,6 @@ app.use(cors({
 
 // Stripe webhook needs raw body BEFORE express.json
 app.post('/stripe/webhook', express.raw({ type: 'application/json' }), stripeWebhook);
-
 app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 

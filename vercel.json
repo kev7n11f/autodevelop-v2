@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "cd frontend && yarn install --production=false && yarn build",
+  "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
   "routes": [
     {
