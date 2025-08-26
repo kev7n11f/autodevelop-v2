@@ -210,6 +210,14 @@ export default function BotUI() {
     }
     // Log the user's message attempt before checking subscription
     setLog(prev => [...prev, { from: 'user', text: userMsg }]);
+    if (subscriptionRequired && !isSubscribed) {
+      // Optionally, provide feedback to the user
+      setLog(prev => [...prev, { ...ERROR_TEMPLATES.SUBSCRIPTION_REQUIRED(), from: 'bot' }]);
+      setInput('');
+      return;
+    }
+    // Log the user's message attempt before checking subscription
+    setLog(prev => [...prev, { from: 'user', text: userMsg }]);
     // Log the user's message attempt before checking subscription
     setLog(prev => [...prev, { from: 'user', text: userMsg }]);
     // Log the user's message attempt before checking subscription
