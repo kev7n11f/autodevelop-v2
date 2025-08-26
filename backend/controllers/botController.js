@@ -97,13 +97,19 @@ exports.chat = [
       if (!isSubscribed) {
         const dailyUsed = usage ? usage.message_count : 0;
         const monthlyUsed = usage ? usage.monthly_message_count : 0;
-        if (dailyUsed >= FREE_LIMIT || monthlyUsed >= FREE_MONTHLY_LIMIT) {
-          await database.logUsageEvent({ userId, eventType: 'limit_block', dailyCount: dailyUsed, monthlyCount: monthlyUsed, ip: clientId, source: 'chat' });
+        
+        // Add pending deltas from memory cache to get accurate current usage
+        const pendingDeltas = usageDeltaCache.get(userId) || { daily: 0, monthly: 0 };
+        const currentDailyUsed = dailyUsed + pendingDeltas.daily;
+        const currentMonthlyUsed = monthlyUsed + pendingDeltas.monthly;
+        
+        if (currentDailyUsed >= FREE_LIMIT || currentMonthlyUsed >= FREE_MONTHLY_LIMIT) {
+          await database.logUsageEvent({ userId, eventType: 'limit_block', dailyCount: currentDailyUsed, monthlyCount: currentMonthlyUsed, ip: clientId, source: 'chat' });
           return res.status(402).json({
             error: 'Free limit reached',
             remaining: 0,
             upgrade: true,
-            message: `You have reached the free ${dailyUsed >= FREE_LIMIT ? 'daily' : 'monthly'} limit (${FREE_LIMIT}/day, ${FREE_MONTHLY_LIMIT}/month). Please upgrade to continue.`,
+            message: `You have reached the free ${currentDailyUsed >= FREE_LIMIT ? 'daily' : 'monthly'} limit (${FREE_LIMIT}/day, ${FREE_MONTHLY_LIMIT}/month). Please upgrade to continue.`,
             checkoutEndpoint: '/api/payments/stripe/checkout'
           });
         }

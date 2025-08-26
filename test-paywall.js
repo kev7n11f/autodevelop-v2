@@ -1,6 +1,14 @@
 // Simple test script to verify paywall functionality
 const assert = require('assert');
-const fetch = require('node-fetch');
+
+// Use node-fetch for Node.js environment
+let fetch;
+try {
+  fetch = require('node-fetch');
+} catch (e) {
+  // Fallback to built-in fetch in newer Node.js versions
+  fetch = globalThis.fetch;
+}
 
 const API_BASE = 'http://localhost:8080/api';
 
