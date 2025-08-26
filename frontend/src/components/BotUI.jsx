@@ -15,7 +15,14 @@ export default function BotUI() {
   const [log, setLog] = useState([
     createFormattedMessage('Hello! I\'m your AI development assistant. How can I help you bring your ideas to life today?', MESSAGE_TYPES.NORMAL)
   ]);
-  const FREE_MESSAGE_LIMIT = 5;
+const FREE_MESSAGE_LIMIT = 5;
+
+export default function BotUI() {
+  const { isAuthenticated, user, loginWithGoogle } = useAuth();
+  const [input, setInput] = useState('');
+  const [log, setLog] = useState([
+    createFormattedMessage('Hello! I\'m your AI development assistant. How can I help you bring your ideas to life today?', MESSAGE_TYPES.NORMAL)
+  ]);
   const [userMessageCount, setUserMessageCount] = useState(0);
   const [subscriptionRequired, setSubscriptionRequired] = useState(false);
   const [paywallDismissed, setPaywallDismissed] = useState(() => {
