@@ -391,11 +391,22 @@ function TodoApp() {
         ];
       }
       setLog(prev => [...prev, { ...augmented, from: 'bot' }]);
-      return count; // freeze
+      return currentCount; // freeze
     }
     return newCount;
-  }, [FREE_MESSAGE_LIMIT, isAuthenticated, isSubscribed, paywallDismissed]);
+  }, []);
 
+  // Helper for gating logic when advancing message count
+  const handleMessageCountAdvance = useCallback((count) => {
+    return maybeShowPaywall(count, {
+      isSubscribed,
+      FREE_MESSAGE_LIMIT,
+      paywallDismissed,
+      isAuthenticated,
+      setSubscriptionRequired,
+      setLog
+    });
+  }, [FREE_MESSAGE_LIMIT, isAuthenticated, isSubscribed, paywallDismissed, setSubscriptionRequired, setLog, maybeShowPaywall]);
   const remainingMessages = useMemo(() => {
     if (isSubscribed) return Infinity;
     return Math.max(FREE_MESSAGE_LIMIT - userMessageCount, 0);
