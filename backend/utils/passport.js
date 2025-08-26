@@ -10,78 +10,78 @@ const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || 'http://localhost
 
 if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
   logger.warn('Google OAuth credentials not configured. Google authentication will not be available.');
-}
+} else {
+  // Configure Google OAuth strategy only if credentials are available
+  passport.use(new GoogleStrategy({
+    clientID: GOOGLE_CLIENT_ID,
+    clientSecret: GOOGLE_CLIENT_SECRET,
+    callbackURL: GOOGLE_CALLBACK_URL,
+    scope: ['profile', 'email']
+  }, async (accessToken, refreshToken, profile, done) => {
+    try {
+      const googleId = profile.id;
+      const email = profile.emails?.[0]?.value;
+      const name = profile.displayName;
+      const avatarUrl = profile.photos?.[0]?.value;
+      const locale = profile._json?.locale;
+      const verifiedEmail = profile.emails?.[0]?.verified || false;
 
-// Configure Google OAuth strategy
-passport.use(new GoogleStrategy({
-  clientID: GOOGLE_CLIENT_ID,
-  clientSecret: GOOGLE_CLIENT_SECRET,
-  callbackURL: GOOGLE_CALLBACK_URL,
-  scope: ['profile', 'email']
-}, async (accessToken, refreshToken, profile, done) => {
-  try {
-    const googleId = profile.id;
-    const email = profile.emails?.[0]?.value;
-    const name = profile.displayName;
-    const avatarUrl = profile.photos?.[0]?.value;
-    const locale = profile._json?.locale;
-    const verifiedEmail = profile.emails?.[0]?.verified || false;
+      if (!email) {
+        logger.warn('Google OAuth profile missing email', { googleId, name });
+        return done(new Error('Email is required'), null);
+      }
 
-    if (!email) {
-      logger.warn('Google OAuth profile missing email', { googleId, name });
-      return done(new Error('Email is required'), null);
-    }
+      // Check if user already exists
+      let user = await database.getUserByGoogleId(googleId);
+      
+      if (user) {
+        // Update user info in case it changed
+        logger.info('Existing user logging in via Google OAuth', {
+          userId: user.id,
+          email: user.email
+        });
+        return done(null, user);
+      }
 
-    // Check if user already exists
-    let user = await database.getUserByGoogleId(googleId);
-    
-    if (user) {
-      // Update user info in case it changed
-      logger.info('Existing user logging in via Google OAuth', {
+      // Check if user exists with same email but different Google ID
+      const existingEmailUser = await database.getUserByEmail(email);
+      if (existingEmailUser) {
+        logger.warn('User with same email already exists with different Google ID', {
+          email,
+          existingUserId: existingEmailUser.id,
+          newGoogleId: googleId
+        });
+        return done(new Error('An account with this email already exists. Please contact support.'), null);
+      }
+
+      // Create new user
+      const userData = {
+        googleId,
+        email,
+        name,
+        avatarUrl,
+        locale,
+        verifiedEmail
+      };
+
+      user = await database.createUser(userData);
+      
+      logger.info('New user created via Google OAuth', {
         userId: user.id,
         email: user.email
       });
+
       return done(null, user);
-    }
-
-    // Check if user exists with same email but different Google ID
-    const existingEmailUser = await database.getUserByEmail(email);
-    if (existingEmailUser) {
-      logger.warn('User with same email already exists with different Google ID', {
-        email,
-        existingUserId: existingEmailUser.id,
-        newGoogleId: googleId
+    } catch (error) {
+      logger.error('Error in Google OAuth strategy:', {
+        error: error.message,
+        stack: error.stack,
+        googleId: profile?.id
       });
-      return done(new Error('An account with this email already exists. Please contact support.'), null);
+      return done(error, null);
     }
-
-    // Create new user
-    const userData = {
-      googleId,
-      email,
-      name,
-      avatarUrl,
-      locale,
-      verifiedEmail
-    };
-
-    user = await database.createUser(userData);
-    
-    logger.info('New user created via Google OAuth', {
-      userId: user.id,
-      email: user.email
-    });
-
-    return done(null, user);
-  } catch (error) {
-    logger.error('Error in Google OAuth strategy:', {
-      error: error.message,
-      stack: error.stack,
-      googleId: profile?.id
-    });
-    return done(error, null);
-  }
-}));
+  }));
+}
 
 // Serialize user for session (not used with JWT, but required by Passport)
 passport.serializeUser((user, done) => {

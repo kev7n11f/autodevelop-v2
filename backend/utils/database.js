@@ -864,6 +864,122 @@ class Database {
     });
   }
 
+  // Add missing usage increment method
+  async incrementUserUsage(userId) {
+    const now = new Date().toISOString();
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    const monthStr = today.toISOString().substring(0, 7);
+
+    // First, check if user has existing usage record
+    let existing = await this.getUserUsage(userId);
+    
+    if (!existing) {
+      // Create new usage record
+      const sql = `INSERT INTO usage_counters (user_id, message_count, period_start, monthly_message_count, monthly_period_start) VALUES (?, 1, ?, 1, ?)`;
+      return new Promise((resolve, reject) => {
+        this.db.run(sql, [userId, now, now], function(err) {
+          if (err) return reject(err);
+          resolve({ userId, message_count: 1, period_start: now, monthly_message_count: 1, monthly_period_start: now });
+        });
+      });
+    }
+
+    // Check if we need to reset daily counter
+    const existingDay = existing.period_start ? existing.period_start.split('T')[0] : null;
+    const existingMonth = existing.monthly_period_start ? existing.monthly_period_start.substring(0, 7) : null;
+    
+    let dailyCount = existing.message_count || 0;
+    let monthlyCount = existing.monthly_message_count || 0;
+    
+    if (existingDay !== todayStr) {
+      // Reset daily counter
+      dailyCount = 0;
+    }
+    
+    if (existingMonth !== monthStr) {
+      // Reset monthly counter
+      monthlyCount = 0;
+    }
+
+    // Increment counters
+    dailyCount += 1;
+    monthlyCount += 1;
+
+    const sql = `UPDATE usage_counters SET message_count = ?, period_start = ?, monthly_message_count = ?, monthly_period_start = ? WHERE user_id = ?`;
+    return new Promise((resolve, reject) => {
+      this.db.run(sql, [dailyCount, now, monthlyCount, now, userId], function(err) {
+        if (err) return reject(err);
+        resolve({ userId, message_count: dailyCount, period_start: now, monthly_message_count: monthlyCount, monthly_period_start: now });
+      });
+    });
+  }
+
+  // Add missing batch usage deltas method
+  async applyUsageDeltas(deltas) {
+    const now = new Date().toISOString();
+    
+    for (const delta of deltas) {
+      try {
+        // Get current usage
+        let existing = await this.getUserUsage(delta.userId);
+        
+        if (!existing) {
+          // Create new record with deltas
+          const sql = `INSERT INTO usage_counters (user_id, message_count, period_start, monthly_message_count, monthly_period_start) VALUES (?, ?, ?, ?, ?)`;
+          await new Promise((resolve, reject) => {
+            this.db.run(sql, [delta.userId, delta.dailyDelta || 0, now, delta.monthlyDelta || 0, now], function(err) {
+              if (err) return reject(err);
+              resolve();
+            });
+          });
+        } else {
+          // Update existing record with deltas
+          const newDaily = (existing.message_count || 0) + (delta.dailyDelta || 0);
+          const newMonthly = (existing.monthly_message_count || 0) + (delta.monthlyDelta || 0);
+          
+          const sql = `UPDATE usage_counters SET message_count = ?, monthly_message_count = ? WHERE user_id = ?`;
+          await new Promise((resolve, reject) => {
+            this.db.run(sql, [newDaily, newMonthly, delta.userId], function(err) {
+              if (err) return reject(err);
+              resolve();
+            });
+          });
+        }
+      } catch (error) {
+        logger.error(`Error applying usage delta for user ${delta.userId}:`, error);
+        // Continue with other deltas even if one fails
+      }
+    }
+  }
+
+  // Add missing audit logging method
+  async logUsageEvent(eventData) {
+    const { userId, eventType, dailyCount, monthlyCount, ip, source, meta, delta } = eventData;
+    const now = new Date().toISOString();
+    
+    const sql = `INSERT INTO usage_events (user_id, event_type, daily_count, monthly_count, ip, source, meta, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+    
+    return new Promise((resolve, reject) => {
+      this.db.run(sql, [
+        userId, 
+        eventType, 
+        dailyCount || null, 
+        monthlyCount || null, 
+        ip || null, 
+        source || 'unknown',
+        JSON.stringify(meta || {}),
+        now
+      ], function(err) {
+        if (err) {
+          logger.error('Error logging usage event:', err);
+          return reject(err);
+        }
+        resolve({ id: this.lastID, ...eventData, created_at: now });
+      });
+    });
+  }
+
   close() {
     if (this.db) {
       this.db.close((err) => {
