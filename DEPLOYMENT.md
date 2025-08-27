@@ -53,6 +53,7 @@ yarn dev  # Starts both backend (8080) and frontend (5173)
 - **Frontend**: Served from root `/`
 - **API**: Available at `/api/*`
 - **Health Check**: `GET /` returns "AutoDevelop.ai backend running ✅"
+- **Render Health Check**: `GET /autodevelop.ai/health` returns immediate HTTP 200 for deployment monitoring
 
 ## Next Steps:
 1. Choose your deployment platform
