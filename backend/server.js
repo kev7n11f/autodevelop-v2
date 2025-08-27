@@ -102,14 +102,8 @@ app.use(session({
 // Initialize Passport.js
 app.use(passport.initialize());
 
-// Logging and monitoring
-app.use(requestLogger);
-
-// Rate limiting and abuse prevention
-app.use(basicRateLimit);
-app.use(speedLimiter);
-
 // Render health check endpoint - must be early and lightweight for deployment
+// Position before rate limiting to ensure health checks are never blocked
 app.get('/autodevelop.ai/health', (_, res) => {
   logger.info('Render health check accessed', { 
     endpoint: '/autodevelop.ai/health',
@@ -122,6 +116,13 @@ app.get('/autodevelop.ai/health', (_, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+// Logging and monitoring
+app.use(requestLogger);
+
+// Rate limiting and abuse prevention
+app.use(basicRateLimit);
+app.use(speedLimiter);
 
 // API routes
 app.use('/api', apiRoutes);
