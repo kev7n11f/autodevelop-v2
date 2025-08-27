@@ -65,8 +65,9 @@ class Database {
     const createUsersTableSQL = `
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        google_id TEXT UNIQUE NOT NULL,
+        google_id TEXT UNIQUE,
         email TEXT UNIQUE NOT NULL,
+        password_hash TEXT,
         name TEXT NOT NULL,
         avatar_url TEXT,
         locale TEXT,
@@ -176,6 +177,8 @@ class Database {
       logger.info('Stripe events table initialized');
       // ensure columns on existing usage_counters
       await this.ensureUsageExtendedColumns();
+      // ensure custom authentication support
+      await this.ensureCustomAuthColumns();
       return Promise.resolve();
     } catch (err) {
       logger.error('Error creating tables:', err);
@@ -257,6 +260,24 @@ class Database {
         }
       }
     }
+  }
+
+  // Ensure users table supports custom authentication
+  async ensureCustomAuthColumns() {
+    const info = await new Promise((resolve) => {
+      this.db.all(`PRAGMA table_info(users)`, [], (err, rows) => resolve(rows || []));
+    });
+    const existingCols = new Set(info.map(r => r.name));
+    
+    // Make google_id nullable if it's not already
+    if (!existingCols.has('password_hash')) {
+      await this.runQuery(`ALTER TABLE users ADD COLUMN password_hash TEXT`);
+      logger.info('Added password_hash column to users table');
+    }
+
+    // Check if google_id is still NOT NULL constraint (this is harder to change in SQLite)
+    // We'll handle this by creating users without google_id for password auth
+    logger.info('Custom authentication columns ensured in users table');
   }
 
   async getSubscriberByEmail(email) {
@@ -893,6 +914,146 @@ class Database {
           return reject(err);
         }
         resolve({ id: this.lastID, ...eventData, created_at: now });
+      });
+    });
+  }
+
+  // Custom authentication methods for email/password
+  async createUserWithPassword(userData) {
+    const { email, password_hash, name, avatarUrl, locale, verifiedEmail } = userData;
+    const insertSQL = `
+      INSERT INTO users (email, password_hash, name, avatar_url, locale, verified_email)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `;
+
+    return new Promise((resolve, reject) => {
+      this.db.run(insertSQL, [email, password_hash, name, avatarUrl, locale, verifiedEmail], function(err) {
+        if (err) {
+          if (err.code === 'SQLITE_CONSTRAINT' && err.message.includes('UNIQUE constraint')) {
+            reject(new Error('Email already registered'));
+          } else {
+            logger.error('Error creating user with password:', err);
+            reject(err);
+          }
+        } else {
+          logger.info(`User created with password authentication: ${email}`);
+          resolve({ id: this.lastID, ...userData });
+        }
+      });
+    });
+  }
+
+  async getUserByEmailForAuth(email) {
+    const selectSQL = `SELECT id, email, password_hash, name, avatar_url, locale, verified_email, created_at, last_login_at FROM users WHERE email = ?`;
+
+    return new Promise((resolve, reject) => {
+      this.db.get(selectSQL, [email], (err, row) => {
+        if (err) {
+          logger.error('Error getting user by email for auth:', err);
+          reject(err);
+        } else {
+          resolve(row);
+        }
+      });
+    });
+  }
+
+  async updateUserLastLogin(userId) {
+    const updateSQL = `UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?`;
+
+    return new Promise((resolve, reject) => {
+      this.db.run(updateSQL, [userId], function(err) {
+        if (err) {
+          logger.error('Error updating user last login:', err);
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
+  // Update session methods to work with new auth
+  async createUserSession(sessionData) {
+    const { userId, sessionToken, refreshToken, expiresAt, ipAddress, userAgent } = sessionData;
+    const insertSQL = `
+      INSERT INTO user_sessions (user_id, session_token, refresh_token, expires_at, ip_address, user_agent)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `;
+
+    return new Promise((resolve, reject) => {
+      this.db.run(insertSQL, [userId, sessionToken, refreshToken, expiresAt, ipAddress, userAgent], function(err) {
+        if (err) {
+          logger.error('Error creating user session:', err);
+          reject(err);
+        } else {
+          resolve({ id: this.lastID, ...sessionData });
+        }
+      });
+    });
+  }
+
+  async getUserSession(sessionToken) {
+    const selectSQL = `
+      SELECT us.*, u.email, u.name, u.google_id, u.avatar_url, u.locale, u.verified_email, u.created_at, u.last_login_at
+      FROM user_sessions us
+      JOIN users u ON us.user_id = u.id
+      WHERE us.session_token = ? AND us.expires_at > CURRENT_TIMESTAMP
+    `;
+
+    return new Promise((resolve, reject) => {
+      this.db.get(selectSQL, [sessionToken], (err, row) => {
+        if (err) {
+          logger.error('Error getting user session:', err);
+          reject(err);
+        } else {
+          resolve(row);
+        }
+      });
+    });
+  }
+
+  async updateSessionLastAccessed(sessionToken) {
+    const updateSQL = `UPDATE user_sessions SET last_accessed_at = CURRENT_TIMESTAMP WHERE session_token = ?`;
+
+    return new Promise((resolve, reject) => {
+      this.db.run(updateSQL, [sessionToken], function(err) {
+        if (err) {
+          logger.error('Error updating session last accessed:', err);
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
+  async deleteUserSession(sessionToken) {
+    const deleteSQL = `DELETE FROM user_sessions WHERE session_token = ?`;
+
+    return new Promise((resolve, reject) => {
+      this.db.run(deleteSQL, [sessionToken], function(err) {
+        if (err) {
+          logger.error('Error deleting user session:', err);
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
+  async deleteAllUserSessions(userId) {
+    const deleteSQL = `DELETE FROM user_sessions WHERE user_id = ?`;
+
+    return new Promise((resolve, reject) => {
+      this.db.run(deleteSQL, [userId], function(err) {
+        if (err) {
+          logger.error('Error deleting all user sessions:', err);
+          reject(err);
+        } else {
+          resolve();
+        }
       });
     });
   }

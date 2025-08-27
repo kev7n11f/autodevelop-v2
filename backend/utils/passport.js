@@ -1,8 +1,19 @@
 const passport = require('passport');
-const GoogleStrategy = require('passport-google-oauth20').Strategy;
+// const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const database = require('./database');
 const logger = require('./logger');
 
+/* 
+ * ARCHIVED GOOGLE OAUTH CODE (for future restoration)
+ * To re-enable Google OAuth:
+ * 1. Uncomment the GoogleStrategy import above
+ * 2. Uncomment the configuration block below
+ * 3. Update .env with GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET
+ * 4. Uncomment Google OAuth routes in authRoutes.js
+ * 5. Update frontend to include Google login option
+ */
+
+/*
 // Google OAuth configuration
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -82,6 +93,7 @@ if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
     }
   }));
 }
+*/
 
 // Serialize user for session (not used with JWT, but required by Passport)
 passport.serializeUser((user, done) => {
