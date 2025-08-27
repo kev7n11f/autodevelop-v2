@@ -6,17 +6,40 @@ const logger = require('./logger');
 class Database {
   constructor() {
     this.db = null;
-    this.dbPath = path.join(__dirname, '..', 'mailing_list.db');
+    // Use environment-appropriate database path
+    // In production/Render, use /tmp or writable directory
+    if (process.env.NODE_ENV === 'production' || process.env.RENDER) {
+      // Render and other container platforms provide /tmp as writable
+      this.dbPath = process.env.DATABASE_PATH || '/tmp/mailing_list.db';
+    } else {
+      // Development - use local directory
+      this.dbPath = process.env.DATABASE_PATH || path.join(__dirname, '..', 'mailing_list.db');
+    }
+    
+    logger.info('Database path configured:', { dbPath: this.dbPath, nodeEnv: process.env.NODE_ENV });
   }
 
   async connect() {
     return new Promise((resolve, reject) => {
+      // Ensure directory exists for database file
+      const fs = require('fs');
+      const dbDir = path.dirname(this.dbPath);
+      
+      try {
+        if (!fs.existsSync(dbDir)) {
+          fs.mkdirSync(dbDir, { recursive: true });
+          logger.info('Created database directory:', { dbDir });
+        }
+      } catch (dirError) {
+        logger.warn('Could not create database directory:', { dbDir, error: dirError.message });
+      }
+      
       this.db = new sqlite3.Database(this.dbPath, (err) => {
         if (err) {
-          logger.error('Error connecting to database:', err);
+          logger.error('Error connecting to database:', { error: err.message, dbPath: this.dbPath });
           reject(err);
         } else {
-          logger.info('Connected to SQLite database for mailing list');
+          logger.info('Connected to SQLite database for mailing list', { dbPath: this.dbPath });
           this.initTables().then(resolve).catch(reject);
         }
       });
