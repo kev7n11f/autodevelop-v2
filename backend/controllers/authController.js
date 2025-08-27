@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const database = require('../utils/database');
 const logger = require('../utils/logger');
+const { hashPassword, verifyPassword, validatePassword, validateEmail } = require('../utils/password');
 
 // JWT secret from environment or generate a random one
 const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(64).toString('hex');
@@ -26,6 +27,16 @@ const generateTokens = (user) => {
   return { accessToken, refreshToken };
 };
 
+/*
+ * ARCHIVED GOOGLE OAUTH CALLBACK (for future restoration)
+ * To re-enable Google OAuth:
+ * 1. Uncomment this handler
+ * 2. Uncomment the Google OAuth routes in authRoutes.js
+ * 3. Uncomment the Google OAuth strategy in passport.js
+ * 4. Update frontend to include Google login option
+ */
+
+/*
 // Google OAuth callback handler
 exports.googleCallback = async (req, res) => {
   try {
@@ -83,6 +94,7 @@ exports.googleCallback = async (req, res) => {
     res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=server_error`);
   }
 };
+*/
 
 // Get current user info
 exports.getCurrentUser = async (req, res) => {
@@ -217,6 +229,216 @@ exports.cleanupExpiredSessions = async (req, res) => {
       error: error.message
     });
     res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// Custom authentication - Register new user
+exports.register = async (req, res) => {
+  try {
+    const { email, password, name } = req.body;
+
+    // Validate input
+    if (!email || !password || !name) {
+      return res.status(400).json({ 
+        error: 'Missing required fields',
+        details: 'Email, password, and name are required'
+      });
+    }
+
+    // Validate email format
+    if (!validateEmail(email)) {
+      return res.status(400).json({ 
+        error: 'Invalid email format'
+      });
+    }
+
+    // Validate password strength
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      return res.status(400).json({ 
+        error: 'Password does not meet requirements',
+        details: passwordValidation.errors
+      });
+    }
+
+    // Check if user already exists
+    const existingUser = await database.getUserByEmail(email);
+    if (existingUser) {
+      return res.status(409).json({ 
+        error: 'Email already registered',
+        details: 'An account with this email already exists'
+      });
+    }
+
+    // Hash password
+    const passwordHash = await hashPassword(password);
+
+    // Create new user
+    const userData = {
+      email,
+      password_hash: passwordHash,
+      name,
+      avatarUrl: null,
+      locale: 'en',
+      verifiedEmail: false
+    };
+
+    const user = await database.createUserWithPassword(userData);
+    
+    // Generate tokens
+    const { accessToken, refreshToken } = generateTokens(user);
+    
+    // Calculate token expiration
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    
+    // Create user session
+    await database.createUserSession({
+      userId: user.id,
+      sessionToken: accessToken,
+      refreshToken,
+      expiresAt: expiresAt.toISOString(),
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent')
+    });
+
+    // Update last login
+    await database.updateUserLastLogin(user.id);
+
+    // Set secure HTTP-only cookies
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    };
+
+    res.cookie('accessToken', accessToken, cookieOptions);
+    res.cookie('refreshToken', refreshToken, cookieOptions);
+
+    logger.info('User registered successfully', {
+      userId: user.id,
+      email: user.email,
+      ip: req.ip
+    });
+
+    // Return user data (without password hash)
+    res.status(201).json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatarUrl: user.avatarUrl,
+        verifiedEmail: user.verifiedEmail,
+        createdAt: user.created_at
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error in user registration:', {
+      error: error.message,
+      stack: error.stack,
+      email: req.body?.email
+    });
+    res.status(500).json({ error: 'Registration failed' });
+  }
+};
+
+// Custom authentication - Login user
+exports.login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Validate input
+    if (!email || !password) {
+      return res.status(400).json({ 
+        error: 'Missing credentials',
+        details: 'Email and password are required'
+      });
+    }
+
+    // Get user by email
+    const user = await database.getUserByEmailForAuth(email);
+    if (!user) {
+      return res.status(401).json({ 
+        error: 'Invalid credentials',
+        details: 'Email or password is incorrect'
+      });
+    }
+
+    // Check if user has password (not OAuth user)
+    if (!user.password_hash) {
+      return res.status(401).json({ 
+        error: 'Invalid login method',
+        details: 'This account uses a different login method'
+      });
+    }
+
+    // Verify password
+    const isPasswordValid = await verifyPassword(password, user.password_hash);
+    if (!isPasswordValid) {
+      return res.status(401).json({ 
+        error: 'Invalid credentials',
+        details: 'Email or password is incorrect'
+      });
+    }
+
+    // Generate tokens
+    const { accessToken, refreshToken } = generateTokens(user);
+    
+    // Calculate token expiration
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    
+    // Create user session
+    await database.createUserSession({
+      userId: user.id,
+      sessionToken: accessToken,
+      refreshToken,
+      expiresAt: expiresAt.toISOString(),
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent')
+    });
+
+    // Update last login
+    await database.updateUserLastLogin(user.id);
+
+    // Set secure HTTP-only cookies
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    };
+
+    res.cookie('accessToken', accessToken, cookieOptions);
+    res.cookie('refreshToken', refreshToken, cookieOptions);
+
+    logger.info('User logged in successfully', {
+      userId: user.id,
+      email: user.email,
+      ip: req.ip
+    });
+
+    // Return user data (without password hash)
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatarUrl: user.avatar_url,
+        verifiedEmail: user.verified_email,
+        lastLoginAt: user.last_login_at
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error in user login:', {
+      error: error.message,
+      stack: error.stack,
+      email: req.body?.email
+    });
+    res.status(500).json({ error: 'Login failed' });
   }
 };
 

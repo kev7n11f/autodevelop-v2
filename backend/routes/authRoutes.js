@@ -1,11 +1,13 @@
 const router = require('express').Router();
 const passport = require('../utils/passport');
 const { 
-  googleCallback, 
+  // googleCallback, // Archived for future restoration
   getCurrentUser, 
   logout, 
   refreshToken, 
-  cleanupExpiredSessions 
+  cleanupExpiredSessions,
+  register,
+  login
 } = require('../controllers/authController');
 const { 
   authenticateToken, 
@@ -15,6 +17,15 @@ const {
   csrfProtection 
 } = require('../middleware/auth');
 
+/*
+ * ARCHIVED GOOGLE OAUTH ROUTES (for future restoration)
+ * To re-enable Google OAuth:
+ * 1. Uncomment the routes below
+ * 2. Uncomment the googleCallback import above
+ * 3. Ensure Google OAuth is configured in passport.js
+ */
+
+/*
 // Google OAuth routes
 router.get('/google', generateOAuthState, (req, res, next) => {
   const state = req.oauthState;
@@ -32,6 +43,11 @@ router.get('/google/callback',
   }),
   googleCallback
 );
+*/
+
+// Custom authentication routes
+router.post('/register', register);
+router.post('/login', login);
 
 // User management routes
 router.get('/me', authenticateToken, getCurrentUser);
