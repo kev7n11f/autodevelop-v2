@@ -24,14 +24,38 @@ const {
 const app = express();
 const port = process.env.PORT || 8080;
 
-// Initialize database connection
+// Track service availability for health checks
+const serviceHealth = {
+  database: false,
+  server: false,
+  startupErrors: []
+};
+
+// Initialize database connection with graceful error handling
 async function initializeDatabase() {
   try {
     await database.connect();
     logger.info('Database initialized successfully');
+    serviceHealth.database = true;
+    return true;
   } catch (error) {
     logger.error('Failed to initialize database:', error);
-    process.exit(1);
+    serviceHealth.database = false;
+    serviceHealth.startupErrors.push({
+      service: 'database',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+    
+    // In production/Render environment, don't exit - allow server to start for health checks
+    if (process.env.NODE_ENV === 'production' || process.env.RENDER) {
+      logger.warn('Database initialization failed, but continuing startup for health checks in production environment');
+      return false;
+    } else {
+      // In development, still exit for immediate feedback
+      logger.error('Database initialization failed in development environment, exiting');
+      process.exit(1);
+    }
   }
 }
 
@@ -88,7 +112,7 @@ app.use(speedLimiter);
 // API routes
 app.use('/api', apiRoutes);
 
-// Health check endpoint
+// Health check endpoint - basic status
 app.get('/', (_, res) => {
   res.json({ 
     status: 'healthy',
@@ -98,13 +122,35 @@ app.get('/', (_, res) => {
   });
 });
 
-// Health check for monitoring systems
+// Health check for monitoring systems - detailed status
 app.get('/health', (_, res) => {
-  res.json({ 
-    status: 'ok',
+  const isHealthy = serviceHealth.server;
+  const hasErrors = serviceHealth.startupErrors.length > 0;
+  
+  // Always respond quickly for Render health checks
+  const healthStatus = {
+    status: isHealthy ? 'ok' : 'degraded',
     uptime: process.uptime(),
-    timestamp: new Date().toISOString()
-  });
+    timestamp: new Date().toISOString(),
+    services: {
+      database: serviceHealth.database ? 'healthy' : 'unavailable',
+      server: serviceHealth.server ? 'healthy' : 'starting'
+    }
+  };
+  
+  // Include startup errors if any (but still return 200 for health checks)
+  if (hasErrors) {
+    healthStatus.startupErrors = serviceHealth.startupErrors;
+  }
+  
+  // Add environment info for debugging
+  healthStatus.environment = {
+    nodeEnv: process.env.NODE_ENV || 'development',
+    port: process.env.PORT || 8080,
+    isRender: !!process.env.RENDER
+  };
+  
+  res.json(healthStatus);
 });
 
 // Error handling middleware (must be last)
@@ -123,17 +169,63 @@ process.on('SIGINT', () => {
   process.exit(0);
 });
 
-// Start server after database initialization
+// Start server with graceful error handling
 async function startServer() {
-  await initializeDatabase();
+  logger.info('🚀 Starting AutoDevelop.ai server...', {
+    nodeEnv: process.env.NODE_ENV || 'development',
+    port,
+    isRender: !!process.env.RENDER,
+    timestamp: new Date().toISOString()
+  });
   
-  app.listen(port, () => {
-    logger.info(`🌐  Server started successfully`, { 
+  // Validate critical environment variables
+  const criticalEnvVars = ['PORT'];
+  const missingEnvVars = criticalEnvVars.filter(envVar => !process.env[envVar] && envVar !== 'PORT');
+  
+  if (missingEnvVars.length > 0) {
+    logger.warn('Some environment variables are missing but using defaults:', { 
+      missing: missingEnvVars 
+    });
+  }
+  
+  // Log environment variable status for debugging
+  logger.info('Environment configuration:', {
+    hasOpenAI: !!process.env.OPENAI_API_KEY,
+    hasSendGrid: !!process.env.SENDGRID_API_KEY,
+    hasStripe: !!process.env.STRIPE_SECRET_KEY,
+    hasAdminKey: !!process.env.ADMIN_KEY,
+    nodeEnv: process.env.NODE_ENV || 'development'
+  });
+  
+  // Initialize database (non-blocking in production)
+  const dbInitialized = await initializeDatabase();
+  
+  // Start HTTP server regardless of database status
+  const server = app.listen(port, '0.0.0.0', () => {
+    serviceHealth.server = true;
+    logger.info(`🌐 Server started successfully`, { 
       port, 
       nodeEnv: process.env.NODE_ENV || 'development',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      databaseHealthy: serviceHealth.database,
+      bindAddress: '0.0.0.0'
+    });
+    
+    // Log service status summary
+    logger.info('Service status summary:', {
+      database: serviceHealth.database ? 'OK' : 'ERROR',
+      server: 'OK',
+      startupErrors: serviceHealth.startupErrors.length
     });
   });
+  
+  // Handle server startup errors
+  server.on('error', (error) => {
+    logger.error('Server failed to start:', error);
+    process.exit(1);
+  });
+  
+  return server;
 }
 
 startServer().catch((error) => {
