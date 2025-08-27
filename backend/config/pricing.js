@@ -157,8 +157,12 @@ function getAllPricingTiers(includePromo = false) {
  * @returns {Object|null} The pricing tier or null if not found
  */
 function getPricingTier(tierId, includePromo = false) {
+  if (!tierId || typeof tierId !== 'string') {
+    return null;
+  }
+  
   const tiers = getAllPricingTiers(includePromo);
-  return tiers[tierId] || null;
+  return tiers[tierId.toLowerCase()] || null;
 }
 
 /**
@@ -168,6 +172,14 @@ function getPricingTier(tierId, includePromo = false) {
  * @returns {string|null} Stripe price ID or null if not found
  */
 function getStripePriceId(tierId, cycle = 'monthly') {
+  if (!tierId || typeof tierId !== 'string') {
+    return null;
+  }
+  
+  if (!['monthly', 'yearly'].includes(cycle)) {
+    return null;
+  }
+  
   const tier = getPricingTier(tierId);
   if (!tier || !tier.stripeIds) return null;
   return tier.stripeIds[cycle] || null;
