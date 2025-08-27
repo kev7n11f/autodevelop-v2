@@ -1,10 +1,25 @@
-# Google OAuth Setup Guide for AutoDevelop.ai
+# Google OAuth Setup Guide for AutoDevelop.ai (ARCHIVED)
+
+> **⚠️ IMPORTANT**: This authentication method has been replaced with a custom email/password system. This documentation is preserved for future reference and restoration if needed. See `CUSTOM_AUTH_SYSTEM.md` for the current authentication system.
+
+## Restoration Status
+
+Google OAuth has been **archived** but not deleted. To restore it:
+
+1. Follow the restoration guide in `CUSTOM_AUTH_SYSTEM.md`
+2. Uncomment the archived code in the backend and frontend
+3. Configure the environment variables below
+4. Update the frontend to include Google OAuth alongside custom authentication
+
+---
+
+## Original Documentation (ARCHIVED)
 
 This guide explains how to set up Google OAuth authentication for the AutoDevelop.ai application.
 
 ## Overview
 
-The application now includes a complete Google OAuth 2.0 authentication system with:
+The application previously included a complete Google OAuth 2.0 authentication system with:
 
 - **Backend**: Express.js with Passport.js for OAuth handling
 - **Frontend**: React with authentication context and components
