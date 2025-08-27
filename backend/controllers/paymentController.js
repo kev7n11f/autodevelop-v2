@@ -2,6 +2,14 @@ const database = require('../utils/database');
 const emailService = require('../utils/emailService');
 const logger = require('../utils/logger');
 const { updateSubscriptionPeriodAfterPayment } = require('../utils/dateUtils');
+const { 
+  getAllPricingTiers, 
+  getPricingTier, 
+  getStripePriceId, 
+  getTierByStripePriceId,
+  isPromotionActive,
+  FREE_TIER
+} = require('../config/pricing');
 
 // Initialize Stripe only if API key is provided
 let stripe = null;
@@ -432,11 +440,21 @@ const stripeWebhook = async (req, res) => {
           const price = line.price;
           const periodStart = new Date(subscription.current_period_start * 1000).toISOString();
           const periodEnd = new Date(subscription.current_period_end * 1000).toISOString();
+          
+          // Determine plan type from tier metadata or price ID
+          let planType = 'pro'; // default fallback
+          const tierInfo = getTierByStripePriceId(price.id);
+          if (tierInfo) {
+            planType = tierInfo.tierId;
+          } else if (session.metadata?.tierId) {
+            planType = session.metadata.tierId;
+          }
+          
           await database.addPaymentSubscription({
             userId: session.metadata.userId,
             email: session.customer_details?.email || session.customer_email,
             name: session.metadata.name || 'Subscriber',
-            planType: 'pro',
+            planType: planType,
             status: subscription.cancel_at_period_end ? 'active' : 'active',
             currentPeriodStart: periodStart,
             currentPeriodEnd: periodEnd,
@@ -492,6 +510,176 @@ const stripeWebhook = async (req, res) => {
   }
 };
 
+// Get all available pricing tiers
+const getPricingTiers = async (req, res) => {
+  try {
+    const includePromo = req.query.promo === 'true';
+    const tiers = getAllPricingTiers(includePromo);
+    
+    res.json({
+      success: true,
+      data: {
+        tiers,
+        freeTier: FREE_TIER,
+        hasActivePromotion: isPromotionActive()
+      }
+    });
+  } catch (error) {
+    logger.error('Error fetching pricing tiers', { error: error.message });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch pricing tiers',
+      details: error.message
+    });
+  }
+};
+
+// Get specific pricing tier details
+const getPricingTierDetails = async (req, res) => {
+  try {
+    const { tierId } = req.params;
+    const includePromo = req.query.promo === 'true';
+    
+    const tier = getPricingTier(tierId, includePromo);
+    if (!tier) {
+      return res.status(404).json({
+        success: false,
+        error: 'Pricing tier not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: tier
+    });
+  } catch (error) {
+    logger.error('Error fetching pricing tier details', { error: error.message, tierId: req.params.tierId });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch pricing tier details',
+      details: error.message
+    });
+  }
+};
+
+// Enhanced Stripe Checkout Session creation with tier support
+const createStripeCheckoutSessionWithTier = async (req, res) => {
+  try {
+    if (!stripe) {
+      return res.status(500).json({ 
+        error: 'Stripe not configured',
+        message: 'Payment processing is not available in this environment' 
+      });
+    }
+
+    const { userId, email, name, tierId, billingCycle = 'monthly', priceId } = req.body;
+    
+    // Validate required fields
+    if (!userId || !email || !name) {
+      return res.status(400).json({ 
+        error: 'Missing required fields',
+        details: 'userId, email, and name are required' 
+      });
+    }
+
+    let finalPriceId = priceId;
+    let selectedTier = null;
+
+    // If tierId is provided, get the corresponding Stripe price ID
+    if (tierId) {
+      selectedTier = getPricingTier(tierId, true); // Include promotional pricing
+      if (!selectedTier) {
+        return res.status(400).json({ 
+          error: 'Invalid tier',
+          details: `Pricing tier '${tierId}' not found` 
+        });
+      }
+      
+      finalPriceId = getStripePriceId(tierId, billingCycle);
+      if (!finalPriceId) {
+        return res.status(400).json({ 
+          error: 'Invalid billing cycle',
+          details: `Billing cycle '${billingCycle}' not available for tier '${tierId}'` 
+        });
+      }
+    }
+
+    // Fallback to default price ID if none provided
+    if (!finalPriceId) {
+      finalPriceId = process.env.STRIPE_DEFAULT_PRICE_ID;
+      if (!finalPriceId) {
+        return res.status(400).json({ 
+          error: 'No price ID available',
+          details: 'No priceId, tierId, or STRIPE_DEFAULT_PRICE_ID configured' 
+        });
+      }
+    }
+
+    // Create Stripe checkout session
+    const sessionParams = {
+      mode: 'subscription',
+      customer_email: email,
+      line_items: [
+        {
+          price: finalPriceId,
+          quantity: 1
+        }
+      ],
+      success_url: (process.env.STRIPE_SUCCESS_URL || 'http://localhost:5173/success') + '?session_id={CHECKOUT_SESSION_ID}',
+      cancel_url: process.env.STRIPE_CANCEL_URL || 'http://localhost:5173/cancel',
+      metadata: {
+        userId,
+        name,
+        tierId: tierId || 'default',
+        billingCycle: billingCycle || 'monthly'
+      },
+      subscription_data: {
+        metadata: {
+          userId,
+          name,
+          tierId: tierId || 'default',
+          billingCycle: billingCycle || 'monthly'
+        }
+      },
+      allow_promotion_codes: true,
+      billing_address_collection: 'required'
+    };
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
+    
+    logger.info('Stripe checkout session created', { 
+      sessionId: session.id, 
+      userId, 
+      tierId: tierId || 'default',
+      billingCycle,
+      priceId: finalPriceId 
+    });
+
+    res.json({
+      success: true,
+      sessionId: session.id,
+      url: session.url,
+      tier: selectedTier ? {
+        id: selectedTier.id,
+        name: selectedTier.name,
+        price: billingCycle === 'yearly' ? selectedTier.priceYearly : selectedTier.priceMonthly,
+        billingCycle
+      } : null
+    });
+  } catch (error) {
+    logger.error('Error creating Stripe checkout session', { 
+      error: error.message, 
+      userId: req.body.userId,
+      tierId: req.body.tierId
+    });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create checkout session',
+      details: error.message
+    });
+  }
+};
+
 module.exports = {
   createSubscription,
   processPaymentEvent,
@@ -499,6 +687,9 @@ module.exports = {
   processPendingNotifications,
   checkUpcomingRenewals,
   createStripeCheckoutSession,
+  createStripeCheckoutSessionWithTier,
   createBillingPortalSession,
-  stripeWebhook
+  stripeWebhook,
+  getPricingTiers,
+  getPricingTierDetails
 };

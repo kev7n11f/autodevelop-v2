@@ -1,0 +1,92 @@
+name: Deploy with Stripe Configuration
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  # Stripe Configuration - Use GitHub Environment Secrets
+  STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+  STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
+  STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+  
+  # Stripe Pricing Configuration - Use GitHub Environment Secrets
+  STRIPE_STARTER_PRICE_ID: ${{ secrets.STRIPE_STARTER_PRICE_ID }}
+  STRIPE_STARTER_YEARLY_PRICE_ID: ${{ secrets.STRIPE_STARTER_YEARLY_PRICE_ID }}
+  STRIPE_PRO_PRICE_ID: ${{ secrets.STRIPE_PRO_PRICE_ID }}
+  STRIPE_PRO_YEARLY_PRICE_ID: ${{ secrets.STRIPE_PRO_YEARLY_PRICE_ID }}
+  STRIPE_ENTERPRISE_PRICE_ID: ${{ secrets.STRIPE_ENTERPRISE_PRICE_ID }}
+  STRIPE_ENTERPRISE_YEARLY_PRICE_ID: ${{ secrets.STRIPE_ENTERPRISE_YEARLY_PRICE_ID }}
+  STRIPE_DEFAULT_PRICE_ID: ${{ secrets.STRIPE_DEFAULT_PRICE_ID }}
+  
+  # Stripe URLs - Can be configured per environment
+  STRIPE_SUCCESS_URL: ${{ vars.STRIPE_SUCCESS_URL || 'https://autodevelop.ai/success' }}
+  STRIPE_CANCEL_URL: ${{ vars.STRIPE_CANCEL_URL || 'https://autodevelop.ai/cancel' }}
+  STRIPE_PORTAL_RETURN_URL: ${{ vars.STRIPE_PORTAL_RETURN_URL || 'https://autodevelop.ai/account' }}
+
+jobs:
+  test-pricing:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm install
+    
+    - name: Test pricing tier configuration
+      run: |
+        # Start server in background
+        npm start &
+        SERVER_PID=$!
+        
+        # Wait for server to start
+        sleep 10
+        
+        # Test pricing endpoints
+        node test-pricing-tiers.js
+        
+        # Clean up
+        kill $SERVER_PID
+    
+    - name: Validate Stripe configuration
+      run: |
+        if [ -z "$STRIPE_SECRET_KEY" ]; then
+          echo "❌ STRIPE_SECRET_KEY not configured"
+          exit 1
+        fi
+        
+        if [ -z "$STRIPE_PRO_PRICE_ID" ]; then
+          echo "❌ STRIPE_PRO_PRICE_ID not configured"
+          exit 1
+        fi
+        
+        echo "✅ Essential Stripe environment variables are configured"
+
+  deploy:
+    needs: test-pricing
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Deploy to production
+      run: |
+        echo "🚀 Deploying to production with Stripe pricing tiers..."
+        # Add your deployment commands here
+        # Example: Deploy to Vercel, Heroku, AWS, etc.
+        
+    - name: Notify deployment success
+      run: |
+        echo "✅ Deployment successful with the following pricing configuration:"
+        echo "   - Starter: \$9.99/month (Promo: \$7.99/month)"
+        echo "   - Pro: \$19.99/month (Promo: \$14.99/month)" 
+        echo "   - Enterprise: \$49.99/month (Promo: \$39.99/month)"
