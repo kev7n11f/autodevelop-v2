@@ -1,6 +1,7 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const crypto = require('crypto');
+const fs = require('fs');
 const logger = require('./logger');
 
 class Database {
@@ -22,7 +23,6 @@ class Database {
   async connect() {
     return new Promise((resolve, reject) => {
       // Ensure directory exists for database file
-      const fs = require('fs');
       const dbDir = path.dirname(this.dbPath);
       
       try {
