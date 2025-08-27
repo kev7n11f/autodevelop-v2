@@ -22,7 +22,10 @@ const {
   processPendingNotifications,
   checkUpcomingRenewals,
   createStripeCheckoutSession,
-  createBillingPortalSession
+  createStripeCheckoutSessionWithTier,
+  createBillingPortalSession,
+  getPricingTiers,
+  getPricingTierDetails
 } = require('../controllers/paymentController');
 
 // Authentication routes
@@ -45,8 +48,15 @@ router.post('/payments/webhook', processPaymentEvent);
 router.get('/payments/subscription/:userId', getSubscription);
 router.post('/payments/process-notifications', processPendingNotifications);
 router.post('/payments/check-renewals', checkUpcomingRenewals);
+
+// Stripe payment endpoints
 router.post('/payments/stripe/checkout', createStripeCheckoutSession);
+router.post('/payments/stripe/checkout-tier', createStripeCheckoutSessionWithTier);
 router.post('/payments/stripe/portal', createBillingPortalSession);
+
+// Pricing endpoints
+router.get('/pricing/tiers', getPricingTiers);
+router.get('/pricing/tiers/:tierId', getPricingTierDetails);
 
 // Admin endpoints
 router.get('/admin/suspicious-activity', getSuspiciousActivity);
