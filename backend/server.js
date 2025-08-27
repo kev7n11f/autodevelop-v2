@@ -102,6 +102,21 @@ app.use(session({
 // Initialize Passport.js
 app.use(passport.initialize());
 
+// Render health check endpoint - must be early and lightweight for deployment
+// Position before rate limiting to ensure health checks are never blocked
+app.get('/autodevelop.ai/health', (_, res) => {
+  logger.info('Render health check accessed', { 
+    endpoint: '/autodevelop.ai/health',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+  
+  res.status(200).json({ 
+    status: 'ok',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Logging and monitoring
 app.use(requestLogger);
 
