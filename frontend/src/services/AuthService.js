@@ -78,11 +78,94 @@ class AuthService {
     }
   }
 
+  // Custom authentication - Register new user
+  async register(email, password, name) {
+    try {
+      const response = await fetch(`${this.apiBase}/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ email, password, name })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        this.user = data.user;
+        this.isAuthenticated = true;
+        this.notifyListeners();
+        return { success: true, user: data.user };
+      } else {
+        return { 
+          success: false, 
+          error: data.error, 
+          details: data.details 
+        };
+      }
+    } catch (error) {
+      console.error('Error during registration:', error);
+      return { 
+        success: false, 
+        error: 'Registration failed',
+        details: 'Network error or server unavailable' 
+      };
+    }
+  }
+
+  // Custom authentication - Login user
+  async login(email, password) {
+    try {
+      const response = await fetch(`${this.apiBase}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        this.user = data.user;
+        this.isAuthenticated = true;
+        this.notifyListeners();
+        return { success: true, user: data.user };
+      } else {
+        return { 
+          success: false, 
+          error: data.error, 
+          details: data.details 
+        };
+      }
+    } catch (error) {
+      console.error('Error during login:', error);
+      return { 
+        success: false, 
+        error: 'Login failed',
+        details: 'Network error or server unavailable' 
+      };
+    }
+  }
+
+  /*
+   * ARCHIVED GOOGLE OAUTH METHOD (for future restoration)
+   * To re-enable Google OAuth:
+   * 1. Uncomment this method
+   * 2. Update AuthContext to use this method
+   * 3. Update Login component to include Google OAuth button
+   * 4. Ensure backend Google OAuth routes are enabled
+   */
+
+  /*
   // Initiate Google OAuth login
   loginWithGoogle() {
     // Redirect to Google OAuth
     window.location.href = `${this.apiBase}/google`;
   }
+  */
 
   // Logout user
   async logout() {

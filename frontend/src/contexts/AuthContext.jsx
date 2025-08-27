@@ -6,7 +6,8 @@ const AuthContext = createContext({
   isAuthenticated: false,
   user: null,
   loading: true,
-  loginWithGoogle: () => {},
+  register: () => {},
+  login: () => {},
   logout: () => {},
   refreshAuth: () => {}
 });
@@ -92,10 +93,58 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Register new user
+  const register = async (email, password, name) => {
+    try {
+      const result = await AuthService.register(email, password, name);
+      if (result.success) {
+        setIsAuthenticated(true);
+        setUser(result.user);
+      }
+      return result;
+    } catch (error) {
+      console.error('Error during registration:', error);
+      return { 
+        success: false, 
+        error: 'Registration failed',
+        details: 'An unexpected error occurred' 
+      };
+    }
+  };
+
+  // Login user
+  const login = async (email, password) => {
+    try {
+      const result = await AuthService.login(email, password);
+      if (result.success) {
+        setIsAuthenticated(true);
+        setUser(result.user);
+      }
+      return result;
+    } catch (error) {
+      console.error('Error during login:', error);
+      return { 
+        success: false, 
+        error: 'Login failed',
+        details: 'An unexpected error occurred' 
+      };
+    }
+  };
+
+  /*
+   * ARCHIVED GOOGLE OAUTH METHOD (for future restoration)
+   * To re-enable Google OAuth:
+   * 1. Uncomment this method
+   * 2. Update Login component to use this method
+   * 3. Ensure backend Google OAuth is enabled
+   */
+
+  /*
   // Login with Google
   const loginWithGoogle = () => {
     AuthService.loginWithGoogle();
   };
+  */
 
   // Logout
   const logout = async () => {
@@ -116,7 +165,8 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated,
     user,
     loading,
-    loginWithGoogle,
+    register,
+    login,
     logout,
     refreshAuth
   };
