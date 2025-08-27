@@ -129,7 +129,7 @@ app.get('/health', (_, res) => {
   
   // Always respond quickly for Render health checks
   const healthStatus = {
-    status: isHealthy ? 'ok' : 'degraded',
+    status: (serviceHealth.server && serviceHealth.database) ? 'ok' : 'degraded',
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
     services: {
@@ -179,8 +179,8 @@ async function startServer() {
   });
   
   // Validate critical environment variables
-  const criticalEnvVars = ['PORT'];
-  const missingEnvVars = criticalEnvVars.filter(envVar => !process.env[envVar] && envVar !== 'PORT');
+  const criticalEnvVars = [];
+  const missingEnvVars = criticalEnvVars.filter(envVar => !process.env[envVar]);
   
   if (missingEnvVars.length > 0) {
     logger.warn('Some environment variables are missing but using defaults:', { 
