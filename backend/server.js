@@ -109,6 +109,20 @@ app.use(requestLogger);
 app.use(basicRateLimit);
 app.use(speedLimiter);
 
+// Render health check endpoint - must be early and lightweight for deployment
+app.get('/autodevelop.ai/health', (_, res) => {
+  logger.info('Render health check accessed', { 
+    endpoint: '/autodevelop.ai/health',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+  
+  res.status(200).json({ 
+    status: 'ok',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // API routes
 app.use('/api', apiRoutes);
 
