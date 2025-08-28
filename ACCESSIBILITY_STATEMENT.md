@@ -1,6 +1,6 @@
 # Accessibility Statement
 
-**Effective Date:** January 2025
+**Effective Date:** August 2025
 
 AutoDevelop.ai is committed to providing an accessible and inclusive experience for all users, including those with disabilities. This accessibility statement outlines our efforts to ensure our AI-powered development platform is usable by everyone.
 
@@ -223,7 +223,7 @@ We will communicate accessibility improvements through:
 
 ---
 
-**Last Updated:** January 2025
+**Last Updated:** August 2025
 
 This accessibility statement reflects our ongoing commitment to digital inclusion. We continuously work to improve the accessibility of our platform and welcome feedback from all users.
 

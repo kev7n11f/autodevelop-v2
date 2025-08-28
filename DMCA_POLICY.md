@@ -55,7 +55,7 @@ Send your DMCA takedown notice to:
 
 **Alternative Methods:**
 - **Contact Form**: https://autodevelop.ai/contact (select "Legal/DMCA" as subject)
-- **Mail**: 1234 Main Street, Suite 500, San Francisco, CA 94105, USA - DMCA Agent
+- **Mail**: 5987 Stonegate Dr, Alexandria, LA 71303, USA - DMCA Agent
 
 ## Our Response Process
 
@@ -160,10 +160,10 @@ AutoDevelop.ai qualifies for DMCA safe harbor protection because we:
 ## Designated DMCA Agent
 
 **DMCA Agent Contact Information:**
-- **Name**: AutoDevelop.ai Legal Team
+- **Name**: AutoDevelop.ai Legal
 - **Email**: dmca@autodevelop.ai
-- **Address**: [Your business address]
-- **Phone**: +1-555-123-4567
+- **Address**: 5987 Stonegate Dr, Alexandria, LA 71303, USA
+- **Phone**: +1-318-481-3919
 
 ## International Considerations
 
@@ -199,6 +199,6 @@ Significant changes will be posted on our website and communicated to affected u
 
 ---
 
-**Last Updated:** January 2025
+**Last Updated:** August 2025
 
 This DMCA policy is part of our broader Terms of Service and commitment to respecting intellectual property rights while providing a platform for creative development and collaboration.
