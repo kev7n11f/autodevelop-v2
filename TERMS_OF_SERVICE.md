@@ -1,6 +1,6 @@
 # Terms of Service
 
-**Effective Date:** January 2025
+**Effective Date:** August 2025
 
 Welcome to AutoDevelop.ai. These Terms of Service ("Terms") govern your use of the AutoDevelop.ai platform and services provided by AutoDevelop.ai ("Company," "we," "us," or "our").
 
@@ -195,7 +195,7 @@ For questions about these Terms of Service, please contact us:
 
 - **Email:** [legal@autodevelop.ai](mailto:legal@autodevelop.ai)
 - **Support:** [support@autodevelop.ai](mailto:support@autodevelop.ai)
-- **Mailing Address:** 1234 AI Innovation Drive, Suite 100, San Francisco, CA 94107, USA
+- **Mailing Address:** 5987 Stonegate Dr, Alexandria, LA 71303, USA
 
 ## 17. Severability
 
@@ -207,6 +207,6 @@ These Terms, together with our Privacy Policy and any additional terms for speci
 
 ---
 
-**Last Updated:** January 2025
+**Last Updated:** August 2025
 
 For the most current version of these Terms, please visit: [https://autodevelop.ai/terms](https://autodevelop.ai/terms)

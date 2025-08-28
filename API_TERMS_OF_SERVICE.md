@@ -1,6 +1,6 @@
 # API Terms of Service
 
-**Effective Date:** January 2025
+**Effective Date:** August 2025
 
 These API Terms of Service ("API Terms") govern your use of AutoDevelop.ai's Application Programming Interfaces ("APIs") and related services. These terms supplement our main Terms of Service.
 
@@ -242,6 +242,6 @@ For API-related questions or issues:
 
 ---
 
-**Last Updated:** January 2025
+**Last Updated:** August 2025
 
 These API Terms of Service are incorporated into and supplement our main Terms of Service. By using our APIs, you agree to comply with both sets of terms.

@@ -1,6 +1,6 @@
 # Acceptable Use Policy
 
-**Effective Date:** January 2025
+**Effective Date:** August 2025
 
 This Acceptable Use Policy ("AUP") describes prohibited uses of AutoDevelop.ai's services and platform. This policy applies to all users of our AI-powered development platform.
 
@@ -193,6 +193,6 @@ For questions about this Acceptable Use Policy:
 
 ---
 
-**Last Updated:** January 2025
+**Last Updated:** August 2025
 
 This Acceptable Use Policy is part of our Terms of Service and applies to all users of AutoDevelop.ai. By using our services, you agree to comply with this policy and our other terms and conditions.
