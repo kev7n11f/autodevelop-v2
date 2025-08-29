@@ -96,11 +96,31 @@ jobs:
         echo "🔍 Validating JSON response..."
         if ! jq empty /tmp/api_response.txt 2>/dev/null; then
           echo "❌ API Health Check Failed: Invalid JSON Response"
-          echo "🔍 Response content (first 10 lines):"
-          head -10 /tmp/api_response.txt 2>/dev/null || echo "No response content"
+          echo "🔍 Full response content:"
+          cat /tmp/api_response.txt 2>/dev/null || echo "No response content"
+          echo ""
+          echo "🔍 Response size: $(wc -c < /tmp/api_response.txt 2>/dev/null || echo '0') bytes"
+          echo "🔍 Response type detection:"
+          
+          # Check if it's HTML
+          if grep -qi "<!DOCTYPE\|<html\|<body\|<div" /tmp/api_response.txt 2>/dev/null; then
+            echo "   • Detected: HTML content (likely error page)"
+          elif grep -qi "server error\|function_invocation_failed\|internal error" /tmp/api_response.txt 2>/dev/null; then
+            echo "   • Detected: Server error message (likely Vercel function failure)"
+          elif grep -qi "not found\|404" /tmp/api_response.txt 2>/dev/null; then
+            echo "   • Detected: Not found error"
+          else
+            echo "   • Detected: Unknown non-JSON content"
+          fi
+          
           echo ""
           echo "🚨 The API is returning HTML or invalid JSON instead of proper JSON response."
           echo "   This indicates the API endpoint may be down or misconfigured."
+          echo "   Common causes:"
+          echo "   • Vercel serverless function deployment failure"
+          echo "   • Missing environment variables in production"
+          echo "   • Code errors in the API handler"
+          echo "   • Database connection issues"
           echo "   Stopping workflow to avoid running pointless tests."
           exit 1
         fi
