@@ -2,6 +2,14 @@
   "version": 2,
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
+  "functions": {
+    "api/index.js": {
+      "runtime": "@vercel/node@18"
+    },
+    "api/test-minimal.js": {
+      "runtime": "@vercel/node@18"
+    }
+  },
   "routes": [
     {
       "src": "/api/(.*)",
