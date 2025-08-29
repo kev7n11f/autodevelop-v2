@@ -9,8 +9,8 @@ AutoDevelop.ai is a modern, full-stack platform that empowers developers and ent
 ## Key Features
 
 - **AI-Powered Guidance**: Get practical advice, code examples, and best practices tailored to your project.
-- **Google OAuth Authentication**: Secure user authentication with Google accounts, JWT tokens, and session management.
-- **Rapid Prototyping**: Go from idea to working prototype in hours, not weeks.
+- **Google OAuth Authentication**-coming soon: Secure user authentication with Google accounts, JWT tokens, and session management.
+- **Rapid Prototyping**: Go from idea to working prototype in hours or days, not weeks, months, or years.
 - **Personalized Learning**: Learn as you build, with explanations and resources that match your skill level.
 - **Full-Stack Support**: Frontend, backend, database, deployment—everything covered.
 - **Enterprise-Grade Security**: Your ideas and code are protected with industry-standard measures.
@@ -161,12 +161,12 @@ ADMIN_KEY=change-me
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_DEFAULT_PRICE_ID=price_123
 STRIPE_WEBHOOK_SECRET=whsec_...
-STRIPE_SUCCESS_URL=http://localhost:5173/success
-STRIPE_CANCEL_URL=http://localhost:5173/cancel
-STRIPE_PORTAL_RETURN_URL=http://localhost:5173/account
+STRIPE_SUCCESS_URL=https://www.autodevelop.ai/success
+STRIPE_CANCEL_URL=https://www.autodevelop.ai/cancel
+STRIPE_PORTAL_RETURN_URL=https://www.autodevelop.ai/account
 SENDGRID_API_KEY=SG.x...
 FROM_EMAIL=noreply@autodevelop.ai
-FRONTEND_URL=http://localhost:5173
+FRONTEND_URL=http://www.autodevelop.ai
 ```
 
 ### Deployment Order / Migration
@@ -180,12 +180,12 @@ FRONTEND_URL=http://localhost:5173
 
 ## Authentication System
 
-AutoDevelop.ai includes a complete Google OAuth 2.0 authentication system:
+# AutoDevelop.ai includes a complete Google OAuth 2.0 authentication system-Coming Soon:
 
-- **Secure Login**: Users can sign in with their Google accounts
-- **Session Management**: Configurable session storage (SQLite by default, supports Redis/MongoDB)
-- **User Profiles**: Automatic profile creation and management
-- **Security Features**: CSRF protection, rate limiting, and secure token handling
+# - **Secure Login**: Users can sign in with their Google accounts
+# - **Session Management**: Configurable session storage (SQLite by default, supports Redis/MongoDB)
+# - **User Profiles**: Automatic profile creation and management
+# - **Security Features**: CSRF protection, rate limiting, and secure token handling
 
 ### Session Store Configuration
 
@@ -207,13 +207,13 @@ SESSION_STORE=mongo
 
 For detailed session store configuration and switching instructions, see [SESSION_STORE_GUIDE.md](./SESSION_STORE_GUIDE.md).
 
-For Google OAuth setup instructions, see [GOOGLE_OAUTH_SETUP.md](./GOOGLE_OAUTH_SETUP.md).
+# For Google OAuth setup instructions, see [GOOGLE_OAUTH_SETUP.md](./GOOGLE_OAUTH_SETUP.md).
 
 ## Getting Started
 
 ### Package Manager
 
-This project uses **Yarn** as the package manager. Please ensure you have Yarn installed before proceeding.
+# This project uses **Yarn** as the package manager. Please ensure you have Yarn installed before proceeding.
 
 #### Installing Yarn
 
