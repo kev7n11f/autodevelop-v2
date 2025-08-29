@@ -11,6 +11,7 @@ frontend/dist
 
 # Database
 backend/mailing_list.db
+backend/sessions.db
 
 # Logs and monitoring data
 logs/
