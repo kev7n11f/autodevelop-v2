@@ -8,7 +8,7 @@ try {
   fetch = globalThis.fetch;
 }
 
-const API_BASE = 'http://localhost:8080/api';
+const API_BASE = process.env.API_BASE_URL ? `${process.env.API_BASE_URL}/api` : 'http://localhost:8080/api';
 const FREE_LIMIT = 5;
 
 async function testPaywallWorking() {
@@ -18,7 +18,8 @@ async function testPaywallWorking() {
   // Test 1: Health check
   console.log('\n📡 Test 1: Server Health Check');
   try {
-    const healthResponse = await fetch('http://localhost:8080/');
+    const baseUrl = process.env.API_BASE_URL || 'http://localhost:8080';
+    const healthResponse = await fetch(baseUrl);
     if (healthResponse.ok) {
       console.log('  ✅ Server is running and responsive');
     } else {
