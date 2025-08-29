@@ -9,6 +9,7 @@ const passport = require('./utils/passport');
 const apiRoutes = require('./routes/apiRoutes');
 const logger = require('./utils/logger');
 const database = require('./utils/database');
+const { createSessionConfig } = require('./config/sessionStore');
 const { 
   basicRateLimit, 
   speedLimiter, 
@@ -88,16 +89,16 @@ app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 
 // Session configuration for OAuth state management
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'autodevelop-session-secret-change-in-production',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    maxAge: 10 * 60 * 1000 // 10 minutes (just for OAuth flow)
+// Uses modular session store (SQLite by default, easily swappable)
+// See backend/config/sessionStore.js for configuration and store swapping instructions
+const sessionConfig = createSessionConfig({
+  // Override default TTL to maintain 10 minutes for OAuth flow
+  options: {
+    ttl: 10 * 60 * 1000 // 10 minutes (just for OAuth flow)
   }
-}));
+});
+
+app.use(session(sessionConfig));
 
 // Initialize Passport.js
 app.use(passport.initialize());
