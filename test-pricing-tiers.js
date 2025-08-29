@@ -8,10 +8,11 @@
 
 const fetch = require('node-fetch');
 
-const API_BASE = 'http://localhost:8080/api';
+const API_BASE = process.env.API_BASE_URL ? `${process.env.API_BASE_URL}/api` : 'http://localhost:8080/api';
 
 async function testPricingTiers() {
   console.log('🎯 Testing Stripe Pricing Tiers Implementation\n');
+  console.log(`🌐 Testing against API: ${API_BASE}\n`);
   
   let passedTests = 0;
   let totalTests = 0;

@@ -9,7 +9,7 @@ try {
   fetch = globalThis.fetch;
 }
 
-const API_BASE = 'http://localhost:8080/api';
+const API_BASE = process.env.API_BASE_URL ? `${process.env.API_BASE_URL}/api` : 'http://localhost:8080/api';
 
 // Test configuration
 const FREE_LIMIT = 5;
