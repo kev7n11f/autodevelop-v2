@@ -4,8 +4,8 @@
   "outputDirectory": "frontend/dist",
   "routes": [
     {
-      "src": "/api/chat",
-      "dest": "/api/chat.js"
+      "src": "/api/(.*)",
+      "dest": "/api/index.js"
     },
     {
       "handle": "filesystem"
