@@ -1,34 +1,10 @@
 /**
- * Vercel Serverless API Handler
+ * Vercel Serverless API Handler - Minimal Version
  * 
- * This file provides a comprehensive API handler for Vercel deployment
- * that supports all backend API routes including pricing, payments, etc.
+ * This version uses minimal dependencies to ensure serverless function stability
  */
 
-// Initialize environment variables
-require('dotenv').config();
-
-const express = require('express');
-const cors = require('cors');
-
-// Create Express app for serverless function
-const app = express();
-
-// Configure CORS for production
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'https://autodevelop.ai',
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key']
-}));
-
-// Parse JSON requests
-app.use(express.json({ limit: '10mb' }));
-
-// Handle OPTIONS requests for CORS
-app.options('*', cors());
-
-// Inline pricing configuration for direct handling
+// Simple pricing data without external dependencies
 const PRICING_TIERS = {
   starter: {
     id: 'starter',
@@ -192,111 +168,114 @@ function getPricingTier(tierId, includePromo = false) {
   return tiers[tierId.toLowerCase()] || null;
 }
 
-// Handle pricing endpoints directly without database dependencies
-app.get('/pricing/tiers/:tierId', (req, res) => {
-  try {
-    const { tierId } = req.params;
-    const includePromo = req.query.promo === 'true';
-    
-    const tier = getPricingTier(tierId, includePromo);
-    if (!tier) {
-      return res.status(404).json({
-        success: false,
-        error: 'Pricing tier not found'
-      });
-    }
-
-    res.json({
-      success: true,
-      data: tier
+// Parse URL to extract path and query parameters
+function parseUrl(url) {
+  const [pathname, queryString] = url.split('?');
+  const query = {};
+  
+  if (queryString) {
+    queryString.split('&').forEach(pair => {
+      const [key, value] = pair.split('=');
+      query[decodeURIComponent(key)] = decodeURIComponent(value || '');
     });
-  } catch (error) {
-    console.error('Error fetching pricing tier details:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch pricing tier details',
-      details: error.message
-    });
-  }
-});
-
-app.get('/pricing/tiers', (req, res) => {
-  try {
-    const includePromo = req.query.promo === 'true';
-    const tiers = getAllPricingTiers(includePromo);
-    
-    res.json({
-      success: true,
-      data: {
-        tiers,
-        freeTier: FREE_TIER,
-        hasActivePromotion: isPromotionActive()
-      }
-    });
-  } catch (error) {
-    console.error('Error fetching pricing tiers:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch pricing tiers',
-      details: error.message
-    });
-  }
-});
-
-// Lazy-load backend routes for other endpoints (with error handling)
-let backendApiRoutes = null;
-
-function getBackendRoutes() {
-  if (!backendApiRoutes) {
-    try {
-      backendApiRoutes = require('../backend/routes/apiRoutes');
-    } catch (error) {
-      console.error('Failed to load backend routes:', error.message);
-      // Return a minimal router with error responses
-      const router = require('express').Router();
-      router.use('*', (req, res) => {
-        res.status(500).json({
-          error: 'Backend services temporarily unavailable',
-          message: 'The API is experiencing initialization issues. Please try again later.',
-          timestamp: new Date().toISOString()
-        });
-      });
-      return router;
-    }
-  }
-  return backendApiRoutes;
-}
-
-// Mount backend API routes with lazy loading for non-pricing endpoints
-app.use('/', (req, res, next) => {
-  // Skip pricing endpoints as they're handled above
-  if (req.path.startsWith('/pricing/')) {
-    return next();
   }
   
-  const routes = getBackendRoutes();
-  routes(req, res, next);
-});
+  return { pathname, query };
+}
 
-// Health check endpoint for root /api calls
-app.get('/', (req, res) => {
-  res.json({
-    status: 'healthy',
-    message: 'AutoDevelop.ai API running ✅',
-    timestamp: new Date().toISOString(),
-    version: '2.0.0'
-  });
-});
-
-// Handle 404 for unknown routes
-app.use('*', (req, res) => {
-  res.status(404).json({
-    error: 'API endpoint not found',
-    path: req.originalUrl,
-    method: req.method,
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Export as Vercel serverless function
-module.exports = app;
+// Main serverless function handler
+module.exports = (req, res) => {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'https://autodevelop.ai');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-admin-key');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+  
+  try {
+    const { pathname, query } = parseUrl(req.url);
+    
+    // Handle root API endpoint
+    if (pathname === '/' || pathname === '') {
+      res.status(200).json({
+        status: 'healthy',
+        message: 'AutoDevelop.ai API running ✅',
+        timestamp: new Date().toISOString(),
+        version: '2.0.0-minimal'
+      });
+      return;
+    }
+    
+    // Handle pricing tiers endpoints
+    if (pathname === '/pricing/tiers') {
+      if (req.method !== 'GET') {
+        res.status(405).json({ error: 'Method not allowed' });
+        return;
+      }
+      
+      const includePromo = query.promo === 'true';
+      const tiers = getAllPricingTiers(includePromo);
+      
+      res.status(200).json({
+        success: true,
+        data: {
+          tiers,
+          freeTier: FREE_TIER,
+          hasActivePromotion: isPromotionActive()
+        }
+      });
+      return;
+    }
+    
+    // Handle specific pricing tier endpoint
+    const tierMatch = pathname.match(/^\/pricing\/tiers\/(.+)$/);
+    if (tierMatch) {
+      if (req.method !== 'GET') {
+        res.status(405).json({ error: 'Method not allowed' });
+        return;
+      }
+      
+      const tierId = tierMatch[1];
+      const includePromo = query.promo === 'true';
+      
+      const tier = getPricingTier(tierId, includePromo);
+      if (!tier) {
+        res.status(404).json({
+          success: false,
+          error: 'Pricing tier not found'
+        });
+        return;
+      }
+      
+      res.status(200).json({
+        success: true,
+        data: tier
+      });
+      return;
+    }
+    
+    // For all other endpoints, return a temporary unavailable message
+    res.status(503).json({
+      error: 'Service temporarily unavailable',
+      message: 'This endpoint is being migrated to a more stable infrastructure. Pricing endpoints are functional.',
+      availableEndpoints: [
+        'GET /pricing/tiers',
+        'GET /pricing/tiers/{tierId}'
+      ],
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('API Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+};
