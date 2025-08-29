@@ -1,6 +1,6 @@
 name: Deploy with Stripe Configuration
 
-# NOTE: Tests are run against the live production API (https://www.autodevellop.ai)
+# NOTE: Tests are run against the live production API (https://www.autodevelop.ai)
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
 
 env:
   # API Configuration - Tests run against live production API
-  API_BASE_URL: https://www.autodevellop.ai
+  API_BASE_URL: https://www.autodevelop.ai
   
   # Stripe Configuration - Use GitHub Environment Secrets
   STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
