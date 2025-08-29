@@ -12,7 +12,7 @@
 
 const fetch = require('node-fetch');
 
-const API_BASE = 'http://localhost:8080/api';
+const API_BASE = process.env.API_BASE_URL ? `${process.env.API_BASE_URL}/api` : 'http://localhost:8080/api';
 
 // Sample data for testing
 const sampleUsers = [

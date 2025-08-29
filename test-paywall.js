@@ -10,7 +10,7 @@ try {
   fetch = globalThis.fetch;
 }
 
-const API_BASE = 'http://localhost:8080/api';
+const API_BASE = process.env.API_BASE_URL ? `${process.env.API_BASE_URL}/api` : 'http://localhost:8080/api';
 
 // Test configuration
 const FREE_LIMIT = 5;
@@ -18,6 +18,7 @@ const TEST_USER_ID = 'test-user-paywall-' + Date.now();
 
 async function testPaywallFlow() {
   console.log('🧪 Starting Paywall Flow Test...\n');
+  console.log(`🌐 Testing against API: ${API_BASE}\n`);
 
   try {
     // Test 1: Send messages up to the free limit

@@ -1,11 +1,16 @@
 name: Deploy with Stripe Configuration
 
+# NOTE: Tests are run against the live production API (https://www.autodevellop.ai)
+
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
 
 env:
+  # API Configuration - Tests run against live production API
+  API_BASE_URL: https://www.autodevellop.ai
+  
   # Stripe Configuration - Use GitHub Environment Secrets
   STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
   STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
@@ -24,6 +29,9 @@ env:
   STRIPE_SUCCESS_URL: ${{ vars.STRIPE_SUCCESS_URL || 'https://autodevelop.ai/success' }}
   STRIPE_CANCEL_URL: ${{ vars.STRIPE_CANCEL_URL || 'https://autodevelop.ai/cancel' }}
   STRIPE_PORTAL_RETURN_URL: ${{ vars.STRIPE_PORTAL_RETURN_URL || 'https://autodevelop.ai/account' }}
+  
+  # Production API Keys
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
 jobs:
   test-pricing:
@@ -41,20 +49,13 @@ jobs:
     - name: Install dependencies
       run: npm install
     
-    - name: Test pricing tier configuration
+    - name: Run tests against live API
       run: |
-        # Start server in background
-        npm start &
-        SERVER_PID=$!
-        
-        # Wait for server to start
-        sleep 10
-        
-        # Test pricing endpoints
+        # Test pricing endpoints against live production API
         node test-pricing-tiers.js
-        
-        # Clean up
-        kill $SERVER_PID
+      env:
+        API_BASE_URL: ${{ env.API_BASE_URL }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     
     - name: Validate Stripe configuration
       run: |
