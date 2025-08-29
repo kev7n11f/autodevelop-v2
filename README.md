@@ -40,6 +40,8 @@ Free users are limited by environment-configurable daily and monthly message cap
 | FROM_EMAIL | `noreply@autodevelop.ai` | Sender identity for mailing list |
 | FRONTEND_URL | `http://localhost:5173` | Used for confirm/unsubscribe redirects |
 | ADMIN_KEY | *(set yourself)* | Simple admin auth shared secret |
+| SESSION_STORE | `sqlite` | Session store type: sqlite, memory, redis, mongo |
+| SESSION_SECRET | *(auto-generated)* | Session encryption secret (set in production) |
 
 ### Core Tables Added
 
@@ -181,11 +183,31 @@ FRONTEND_URL=http://localhost:5173
 AutoDevelop.ai includes a complete Google OAuth 2.0 authentication system:
 
 - **Secure Login**: Users can sign in with their Google accounts
-- **Session Management**: JWT-based authentication with secure cookie storage
+- **Session Management**: Configurable session storage (SQLite by default, supports Redis/MongoDB)
 - **User Profiles**: Automatic profile creation and management
 - **Security Features**: CSRF protection, rate limiting, and secure token handling
 
-For detailed setup instructions, see [GOOGLE_OAUTH_SETUP.md](./GOOGLE_OAUTH_SETUP.md).
+### Session Store Configuration
+
+The application uses SQLite for session storage by default, providing persistence across server restarts. You can easily switch to other session stores:
+
+```bash
+# Use SQLite (default) - no external dependencies
+SESSION_STORE=sqlite
+
+# Use Memory (development only)
+SESSION_STORE=memory
+
+# Future: Redis for production clusters
+SESSION_STORE=redis
+
+# Future: MongoDB if already using MongoDB
+SESSION_STORE=mongo
+```
+
+For detailed session store configuration and switching instructions, see [SESSION_STORE_GUIDE.md](./SESSION_STORE_GUIDE.md).
+
+For Google OAuth setup instructions, see [GOOGLE_OAUTH_SETUP.md](./GOOGLE_OAUTH_SETUP.md).
 
 ## Getting Started
 
