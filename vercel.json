@@ -4,14 +4,6 @@
   "outputDirectory": "frontend/dist",
   "routes": [
     {
-      "src": "/api/pricing/tiers/([^/]+)",
-      "dest": "/api/pricing/tiers/[tierId].js?tierId=$1"
-    },
-    {
-      "src": "/api/pricing/tiers",
-      "dest": "/api/pricing/tiers.js"
-    },
-    {
       "src": "/api/(.*)",
       "dest": "/api/index.js"
     },
