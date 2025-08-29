@@ -49,6 +49,81 @@ jobs:
     - name: Install dependencies
       run: npm install
     
+    - name: API Health Check
+      run: |
+        echo "🏥 Performing API health check..."
+        echo "🌐 Testing API endpoint: ${{ env.API_BASE_URL }}/api/pricing/tiers"
+        
+        # Check if curl and jq are available
+        if ! command -v curl >/dev/null 2>&1; then
+          echo "❌ Error: curl is not available"
+          exit 1
+        fi
+        
+        if ! command -v jq >/dev/null 2>&1; then
+          echo "❌ Error: jq is not available"
+          exit 1
+        fi
+        
+        # Set the API endpoint for health check
+        API_ENDPOINT="${{ env.API_BASE_URL }}/api/pricing/tiers"
+        
+        # Perform health check with proper error handling
+        echo "📡 Making request to API endpoint..."
+        if ! HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/api_response.txt "$API_ENDPOINT" 2>/dev/null); then
+          echo "❌ API Health Check Failed: Network Error"
+          echo "🚨 Could not connect to the API endpoint."
+          echo "   This indicates a network connectivity issue or the API server is completely down."
+          echo "   Stopping workflow to avoid running pointless tests."
+          exit 1
+        fi
+        
+        echo "📊 HTTP Response Code: $HTTP_CODE"
+        
+        # Check if we got a successful HTTP response
+        if [ "$HTTP_CODE" != "200" ]; then
+          echo "❌ API Health Check Failed: HTTP $HTTP_CODE"
+          echo "🔍 Response content:"
+          head -10 /tmp/api_response.txt 2>/dev/null || echo "No response content"
+          echo ""
+          echo "🚨 The API endpoint is not responding with HTTP 200."
+          echo "   This indicates the API may be down, misconfigured, or returning error pages."
+          echo "   Stopping workflow to avoid running pointless tests."
+          exit 1
+        fi
+        
+        # Check if the response is valid JSON
+        echo "🔍 Validating JSON response..."
+        if ! jq empty /tmp/api_response.txt 2>/dev/null; then
+          echo "❌ API Health Check Failed: Invalid JSON Response"
+          echo "🔍 Response content (first 10 lines):"
+          head -10 /tmp/api_response.txt 2>/dev/null || echo "No response content"
+          echo ""
+          echo "🚨 The API is returning HTML or invalid JSON instead of proper JSON response."
+          echo "   This indicates the API endpoint may be down or misconfigured."
+          echo "   Stopping workflow to avoid running pointless tests."
+          exit 1
+        fi
+        
+        # Validate the JSON structure contains expected fields
+        echo "✅ JSON validation passed. Checking response structure..."
+        if ! jq -e '.success' /tmp/api_response.txt >/dev/null 2>&1; then
+          echo "⚠️  Warning: Response doesn't contain 'success' field, but JSON is valid"
+          echo "🔍 Response structure:"
+          jq '.' /tmp/api_response.txt 2>/dev/null | head -10 || echo "Could not parse response"
+        else
+          echo "✅ Response contains expected 'success' field"
+        fi
+        
+        echo "✅ API Health Check Passed!"
+        echo "   • HTTP 200 response received"
+        echo "   • Valid JSON format confirmed"
+        echo "   • API endpoint is responding correctly"
+        echo ""
+        
+        # Clean up
+        rm -f /tmp/api_response.txt
+    
     - name: Run tests against live API
       run: |
         # Test pricing endpoints against live production API
