@@ -156,7 +156,7 @@ module.exports = function(req, res) {
       if (includePromo) {
         var promoTiers = {};
         for (var tierId in tiers) {
-          promoTiers[tierId] = JSON.parse(JSON.stringify(tiers[tierId])); // Deep copy
+          promoTiers[tierId] = structuredClone(tiers[tierId]); // Deep copy
           if (tierId === 'starter') {
             promoTiers[tierId].originalPriceMonthly = promoTiers[tierId].priceMonthly;
             promoTiers[tierId].priceMonthly = 7.99;

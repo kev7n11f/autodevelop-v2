@@ -24,7 +24,7 @@ async function fetchWithErrorHandling(url, options = {}) {
       console.log(`     Content-Type: ${contentType || 'unknown'}`);
       
       // Check if it's HTML (likely an error page)
-      if (responseText.includes('<html>') || responseText.includes('<!DOCTYPE') || 
+      if (/<!DOCTYPE|<html>|<body>/i.test(responseText) ||
           responseText.includes('server error') || responseText.includes('FUNCTION_INVOCATION_FAILED')) {
         console.log(`     Response appears to be HTML error page:`);
         console.log(`     "${responseText.substring(0, 100)}${responseText.length > 100 ? '...' : ''}"`);

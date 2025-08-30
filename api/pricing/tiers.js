@@ -187,7 +187,14 @@ function getPricingTier(tierId, includePromo = false) {
 // Vercel serverless function handler
 module.exports = (req, res) => {
   // Enable CORS
-  res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'https://autodevelop.ai');
+  if (!process.env.FRONTEND_URL) {
+    res.status(500).json({
+      success: false,
+      error: 'FRONTEND_URL environment variable is not set. CORS policy requires this to be defined.'
+    });
+    return;
+  }
+  res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL);
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
