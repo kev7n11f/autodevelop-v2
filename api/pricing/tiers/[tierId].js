@@ -22,7 +22,7 @@ module.exports = (req, res) => {
   }
 
   // Modify the request URL to include the tierId for processing
-  req.url = `/api/pricing/tiers/${tierId}${req.url.includes('?') ? '&' + req.url.split('?')[1] : ''}`;
+  req.url = `/api/pricing/tiers/${tierId}${req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''}`;
   
   // Use the same handler as the main tiers endpoint
   tiersHandler(req, res);
