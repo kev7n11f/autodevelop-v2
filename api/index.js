@@ -201,7 +201,7 @@ module.exports = function(req, res) {
       
       // Apply promotional pricing if requested
       if (query.promo === 'true') {
-        tier = { ...tier }; // Shallow copy
+        tier = JSON.parse(JSON.stringify(tier)); // Deep copy
         if (tierId === 'starter') {
           tier.originalPriceMonthly = tier.priceMonthly;
           tier.priceMonthly = 7.99;
