@@ -187,14 +187,12 @@ function getPricingTier(tierId, includePromo = false) {
 // Vercel serverless function handler
 module.exports = (req, res) => {
   // Enable CORS
-  if (!process.env.FRONTEND_URL) {
-    res.status(500).json({
-      success: false,
-      error: 'FRONTEND_URL environment variable is not set. CORS policy requires this to be defined.'
-    });
-    return;
+  let corsOrigin = process.env.FRONTEND_URL;
+  if (!corsOrigin) {
+    corsOrigin = '*';
+    console.warn('[pricing/tiers] Warning: FRONTEND_URL is not set. Falling back to Access-Control-Allow-Origin: * for CORS. This should not be used in production.');
   }
-  res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL);
+  res.setHeader('Access-Control-Allow-Origin', corsOrigin);
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
