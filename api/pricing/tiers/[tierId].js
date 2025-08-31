@@ -22,14 +22,12 @@ module.exports = (req, res) => {
   }
 
   // Modify the request URL to include the tierId for processing using the URL constructor
-  {
-    // Determine the base URL for parsing (use host header if available, else fallback)
-    const host = req.headers && req.headers.host ? req.headers.host : 'localhost';
-    const protocol = req.headers && req.headers['x-forwarded-proto'] ? req.headers['x-forwarded-proto'] : 'http';
-    const originalUrl = new URL(req.url, `${protocol}://${host}`);
-    originalUrl.pathname = `/api/pricing/tiers/${tierId}`;
-    req.url = originalUrl.pathname + originalUrl.search;
-  }
+  // Determine the base URL for parsing (use host header if available, else fallback)
+  const host = req.headers && req.headers.host ? req.headers.host : 'localhost';
+  const protocol = req.headers && req.headers['x-forwarded-proto'] ? req.headers['x-forwarded-proto'] : 'http';
+  const originalUrl = new URL(req.url, `${protocol}://${host}`);
+  originalUrl.pathname = `/api/pricing/tiers/${tierId}`;
+  req.url = originalUrl.pathname + originalUrl.search;
   
   // Use the same handler as the main tiers endpoint
   tiersHandler(req, res);
