@@ -4,10 +4,22 @@
   "outputDirectory": "frontend/dist",
   "functions": {
     "api/index.js": {
-      "runtime": "@vercel/node@18"
+      "runtime": "nodejs20.x"
     },
     "api/test-minimal.js": {
-      "runtime": "@vercel/node@18"
+      "runtime": "nodejs20.x"
+    },
+    "api/chat.js": {
+      "runtime": "nodejs20.x"
+    },
+    "api/pricing/tiers.js": {
+      "runtime": "nodejs20.x"
+    },
+    "api/pricing/tiers/[tierId].js": {
+      "runtime": "nodejs20.x"
+    },
+    "api/ultra-test.js": {
+      "runtime": "nodejs20.x"
     }
   },
   "routes": [
