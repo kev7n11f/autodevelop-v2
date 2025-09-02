@@ -10,6 +10,47 @@ const fetch = require('node-fetch');
 
 const API_BASE = process.env.API_BASE_URL ? `${process.env.API_BASE_URL}/api` : 'http://localhost:8080/api';
 
+// Helper function to handle fetch with better error reporting
+async function fetchWithErrorHandling(url, options = {}) {
+  try {
+    const response = await fetch(url, options);
+    
+    // If response is not ok, try to get the error details
+    if (!response.ok) {
+      const contentType = response.headers.get('content-type');
+      const responseText = await response.text();
+      
+      console.log(`     HTTP ${response.status}: ${response.statusText}`);
+      console.log(`     Content-Type: ${contentType || 'unknown'}`);
+      
+      // Check if it's HTML (likely an error page)
+      if (responseText.includes('<html>') || responseText.includes('<!DOCTYPE') || 
+          responseText.includes('server error') || responseText.includes('FUNCTION_INVOCATION_FAILED')) {
+        console.log(`     Response appears to be HTML error page:`);
+        console.log(`     "${responseText.substring(0, 100)}${responseText.length > 100 ? '...' : ''}"`);
+        throw new Error(`Server returned HTML error page instead of JSON (HTTP ${response.status})`);
+      }
+      
+      // Try to parse as JSON for API errors
+      try {
+        const errorData = JSON.parse(responseText);
+        return { response, data: errorData };
+      } catch {
+        throw new Error(`Non-JSON response (HTTP ${response.status}): ${responseText.substring(0, 200)}`);
+      }
+    }
+    
+    // Try to parse successful response as JSON
+    const data = await response.json();
+    return { response, data };
+  } catch (error) {
+    if (error.message.includes('invalid json response body')) {
+      throw new Error(`API returned HTML instead of JSON. This suggests a server error or misconfiguration.`);
+    }
+    throw error;
+  }
+}
+
 async function testPricingTiers() {
   console.log('🎯 Testing Stripe Pricing Tiers Implementation\n');
   console.log(`🌐 Testing against API: ${API_BASE}\n`);
@@ -21,8 +62,7 @@ async function testPricingTiers() {
   console.log('📊 Test 1: Get All Pricing Tiers');
   totalTests++;
   try {
-    const response = await fetch(`${API_BASE}/pricing/tiers`);
-    const data = await response.json();
+    const { response, data } = await fetchWithErrorHandling(`${API_BASE}/pricing/tiers`);
     
     if (response.ok && data.success && data.data.tiers) {
       const tierCount = Object.keys(data.data.tiers).length;
@@ -32,6 +72,7 @@ async function testPricingTiers() {
       passedTests++;
     } else {
       console.log(`  ❌ Failed to retrieve pricing tiers`);
+      console.log(`     Response: ${JSON.stringify(data, null, 2)}`);
     }
   } catch (error) {
     console.log(`  ❌ Error: ${error.message}`);
@@ -41,8 +82,7 @@ async function testPricingTiers() {
   console.log('\n🎉 Test 2: Get Promotional Pricing');
   totalTests++;
   try {
-    const response = await fetch(`${API_BASE}/pricing/tiers?promo=true`);
-    const data = await response.json();
+    const { response, data } = await fetchWithErrorHandling(`${API_BASE}/pricing/tiers?promo=true`);
     
     if (response.ok && data.success) {
       const proTier = data.data.tiers.pro;
@@ -56,6 +96,7 @@ async function testPricingTiers() {
       }
     } else {
       console.log(`  ❌ Failed to retrieve promotional pricing`);
+      console.log(`     Response: ${JSON.stringify(data, null, 2)}`);
     }
   } catch (error) {
     console.log(`  ❌ Error: ${error.message}`);
