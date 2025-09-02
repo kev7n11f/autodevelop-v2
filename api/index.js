@@ -30,9 +30,6 @@ module.exports = async (req, res) => {
     // Get the Express app
     const expressApp = await getApp();
     
-    // Create a mock server to handle the request properly
-    const server = createServer(expressApp);
-    
     // Handle the request using Express
     expressApp(req, res);
   } catch (error) {
