@@ -1,30 +1,27 @@
 {
   "version": 2,
-  "buildCommand": "cd frontend && npm install && npm run build",
+  "buildCommand": "npm install && cd frontend && npm run build",
   "outputDirectory": "frontend/dist",
   "functions": {
     "api/index.js": {
-      "runtime": "nodejs20.x"
-    },
-    "api/test-minimal.js": {
-      "runtime": "nodejs20.x"
-    },
-    "api/chat.js": {
-      "runtime": "nodejs20.x"
-    },
-    "api/pricing/tiers.js": {
-      "runtime": "nodejs20.x"
-    },
-    "api/pricing/tiers/[tierId].js": {
-      "runtime": "nodejs20.x"
-    },
-    "api/ultra-test.js": {
       "runtime": "nodejs20.x"
     }
   },
   "routes": [
     {
       "src": "/api/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/health",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/autodevelop.ai/health",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/stripe/webhook",
       "dest": "/api/index.js"
     },
     {
