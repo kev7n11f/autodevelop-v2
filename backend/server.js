@@ -244,7 +244,13 @@ async function startServer() {
   return server;
 }
 
-startServer().catch((error) => {
-  logger.error('Failed to start server:', error);
-  process.exit(1);
-});
+// Export the app for Vercel serverless functions
+module.exports = app;
+
+// Only start the server if this file is run directly (not imported)
+if (require.main === module) {
+  startServer().catch((error) => {
+    logger.error('Failed to start server:', error);
+    process.exit(1);
+  });
+}

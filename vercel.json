@@ -3,26 +3,26 @@
   "buildCommand": "npm install && cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
   "functions": {
-    "backend/server.js": {
+    "api/index.js": {
       "runtime": "nodejs20.x"
     }
   },
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/backend/server.js"
+      "dest": "/api/index.js"
     },
     {
       "src": "/health",
-      "dest": "/backend/server.js"
+      "dest": "/api/index.js"
     },
     {
       "src": "/autodevelop.ai/health",
-      "dest": "/backend/server.js"
+      "dest": "/api/index.js"
     },
     {
       "src": "/stripe/webhook",
-      "dest": "/backend/server.js"
+      "dest": "/api/index.js"
     },
     {
       "handle": "filesystem"
