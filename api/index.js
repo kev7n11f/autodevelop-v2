@@ -23,6 +23,42 @@ module.exports = async (req, res) => {
   try {
     console.log(`[Vercel Proxy] ${req.method} ${req.url}`);
     
+    // Check for common configuration issues before trying to load the app
+    const missingRequiredEnvVars = [];
+    
+    if (!process.env.JWT_SECRET) {
+      missingRequiredEnvVars.push('JWT_SECRET');
+    }
+    
+    if (!process.env.SESSION_SECRET) {
+      missingRequiredEnvVars.push('SESSION_SECRET');
+    }
+    
+    if (!process.env.OPENAI_API_KEY) {
+      missingRequiredEnvVars.push('OPENAI_API_KEY');
+    }
+    
+    // If critical environment variables are missing, return a helpful error
+    if (missingRequiredEnvVars.length > 0) {
+      console.error('Missing required environment variables:', missingRequiredEnvVars);
+      
+      if (!res.headersSent) {
+        return res.status(500).json({
+          error: 'Server configuration error',
+          message: 'Missing required environment variables',
+          missingVariables: missingRequiredEnvVars,
+          timestamp: new Date().toISOString(),
+          url: req.url,
+          method: req.method,
+          suggestions: [
+            'Ensure all required environment variables are set in your deployment platform',
+            'Check your .env file or deployment configuration',
+            'Required variables: JWT_SECRET, SESSION_SECRET, OPENAI_API_KEY'
+          ]
+        });
+      }
+    }
+    
     // Get the Express app
     const expressApp = await getApp();
     
@@ -31,15 +67,49 @@ module.exports = async (req, res) => {
   } catch (error) {
     console.error('Error in Vercel proxy function:', error);
     
+    // Provide more specific error information
+    let errorDetails = {
+      error: 'Internal server error',
+      message: error.message,
+      timestamp: new Date().toISOString(),
+      url: req.url,
+      method: req.method
+    };
+    
+    // Check for common error patterns
+    if (error.message.includes('MODULE_NOT_FOUND')) {
+      errorDetails.category = 'dependency_error';
+      errorDetails.suggestions = [
+        'Check if all dependencies are properly installed',
+        'Verify the build process completed successfully',
+        'Ensure package.json is configured correctly'
+      ];
+    } else if (error.message.includes('Cannot find module')) {
+      errorDetails.category = 'module_error';
+      errorDetails.suggestions = [
+        'Check if the backend server file exists',
+        'Verify the file path is correct',
+        'Ensure the build process included all necessary files'
+      ];
+    } else if (error.message.includes('SQLITE') || error.message.includes('database')) {
+      errorDetails.category = 'database_error';
+      errorDetails.suggestions = [
+        'Check database configuration',
+        'Verify database file permissions',
+        'Ensure the database directory exists'
+      ];
+    } else {
+      errorDetails.category = 'unknown_error';
+      errorDetails.suggestions = [
+        'Check server logs for more details',
+        'Verify all environment variables are set',
+        'Contact support if the issue persists'
+      ];
+    }
+    
     // Ensure response is properly handled
     if (!res.headersSent) {
-      res.status(500).json({
-        error: 'Internal server error',
-        message: error.message,
-        timestamp: new Date().toISOString(),
-        url: req.url,
-        method: req.method
-      });
+      res.status(500).json(errorDetails);
     }
   }
 };
