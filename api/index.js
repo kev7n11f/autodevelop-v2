@@ -1,10 +1,6 @@
 // Vercel serverless function that proxies all requests to the main backend server
 // This acts as a single entry point that routes to the full Express.js backend
 
-const path = require('path');
-const { createServer } = require('http');
-const { parse } = require('url');
-
 // Import the main backend server
 let app = null;
 
