@@ -220,6 +220,13 @@ jobs:
    - Verify secrets are set in correct environment
    - Ensure workflow has access to environment
 
+4. **GitHub Actions Workflow Failing with FUNCTION_INVOCATION_FAILED**
+   - This usually indicates missing environment variables in production deployment
+   - Check that all required Stripe price ID secrets are configured in GitHub repository settings
+   - Verify the production deployment (Vercel/Netlify/etc) has the required environment variables
+   - The workflow will now skip tests and provide clear error messages when configuration is missing
+   - To fix: Add the missing secrets in GitHub → Settings → Secrets and variables → Actions
+
 ### Debug Commands
 
 ```bash
@@ -233,6 +240,18 @@ curl -X POST localhost:8080/api/pricing/tiers \
 
 # Validate environment variables
 node -e "console.log(process.env.STRIPE_SECRET_KEY ? 'Stripe configured' : 'Stripe missing')"
+
+# Test production API health
+curl -s https://www.autodevelop.ai/api/pricing/tiers | jq '.success // "API Error"'
+
+# Check GitHub Actions workflow status
+gh run list --workflow=deploy-with-stripe.yml --limit=5
+
+# Validate all required Stripe price IDs are set
+node -e "
+const vars = ['STRIPE_STARTER_PRICE_ID', 'STRIPE_PRO_PRICE_ID', 'STRIPE_ENTERPRISE_PRICE_ID'];
+vars.forEach(v => console.log(v + ':', process.env[v] ? 'SET' : 'MISSING'));
+"
 ```
 
 ## Migration Guide
