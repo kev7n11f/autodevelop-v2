@@ -47,23 +47,18 @@ yarn start
 ## ⚠️ Important: Vercel Runtime Version Management
 
 ### Current Configuration
-All serverless functions now use **nodejs20.x** runtime for optimal compatibility and performance:
+All serverless functions now use **@vercel/node@20** runtime for optimal compatibility and performance:
 
 ```json
 {
   "functions": {
-    "api/index.js": { "runtime": "nodejs20.x" },
-    "api/test-minimal.js": { "runtime": "nodejs20.x" },
-    "api/chat.js": { "runtime": "nodejs20.x" },
-    "api/pricing/tiers.js": { "runtime": "nodejs20.x" },
-    "api/pricing/tiers/[tierId].js": { "runtime": "nodejs20.x" },
-    "api/ultra-test.js": { "runtime": "nodejs20.x" }
+    "api/index.js": { "runtime": "@vercel/node@20" }
   }
 }
 ```
 
 ### Runtime Version Best Practices
-- **Always use explicit runtime versions** (e.g., `nodejs20.x`, not `@vercel/node@18`)
+- **Always use explicit runtime versions** (e.g., `@vercel/node@20`, not `nodejs20.x`)
 - **Keep runtime versions up-to-date** with your development environment
 - **Test locally** with the same Node.js version before deployment
 - **Monitor Vercel's runtime deprecation notices** and update accordingly
