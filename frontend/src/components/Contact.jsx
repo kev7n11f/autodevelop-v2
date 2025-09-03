@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import './Pages.css';
+import SEO, { composeTitle } from './SEO';
 
 export default function Contact() {
   const [formData, setFormData] = useState({
@@ -38,6 +39,7 @@ export default function Contact() {
 
   return (
     <div className="page-content">
+  <SEO title={composeTitle('Contact')} description="Contact AutoDevelop.ai for support, partnership, or questions about our AI-powered development platform." url="https://autodevelop.ai/contact" />
       <div className="page-header">
         <h1>Contact Us</h1>
         <p className="page-subtitle">Ready to bring your ideas to life? Get in touch with our team.</p>

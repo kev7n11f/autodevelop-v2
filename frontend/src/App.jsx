@@ -2,7 +2,8 @@ import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react
 import { useState, useEffect } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
-import { Helmet, HelmetProvider } from 'react-helmet-async';
+import { HelmetProvider } from 'react-helmet-async';
+import SEO from './components/SEO';
 import { AuthProvider } from './contexts/AuthContext';
 import BotUI from './components/BotUI';
 import About from './components/About';
@@ -89,14 +90,7 @@ function FloatingActionButton() {
   );
 }
 
-function SEO({ title, description }) {
-  return (
-    <Helmet>
-      <title>{title}</title>
-      <meta name="description" content={description} />
-    </Helmet>
-  );
-}
+// SEO handled by `components/SEO.jsx`
 
 function FloatingUpgradeButton() {
   return (
@@ -118,10 +112,11 @@ function AppContent() {
   // Check for URL parameters for confirmation states
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
+    // remove noisy console logs — rely on UI/notification system instead
     if (urlParams.get('confirmed') === 'true') {
-      console.log('Email confirmed successfully!');
+      // could fire a notification event here in future
     } else if (urlParams.get('unsubscribed') === 'true') {
-      console.log('Successfully unsubscribed');
+      // silent acknowledgement
     }
   }, []);
 
@@ -157,7 +152,7 @@ function AppContent() {
 
   return (
     <div className="app">
-      <SEO title={seoTitle} description={seoDesc} />
+      <SEO title={seoTitle} description={seoDesc} pathname={location.pathname} />
       <NotificationBar />
       <Navigation />
       

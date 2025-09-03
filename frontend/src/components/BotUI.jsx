@@ -1,9 +1,11 @@
 import React from 'react';
 import './BotUI.css';
+import SEO, { composeTitle } from './SEO';
 
 export default function BotUI() {
   return (
     <div className="bot-ui">
+  <SEO title={composeTitle('Chat')} description="AI Development Assistant — get guidance, code examples and step-by-step help." pathname="/" />
       <div className="chat-container">
         <div className="chat-header">
           <h2>🤖 AI Development Assistant</h2>

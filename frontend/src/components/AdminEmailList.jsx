@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import './AdminEmailList.css';
+import SEO, { composeTitle } from './SEO';
 
 export default function AdminEmailList() {
   const [stats, setStats] = useState(null);
@@ -57,6 +58,7 @@ export default function AdminEmailList() {
 
   return (
     <div className="admin-email-list">
+  <SEO title={composeTitle('Admin - Email List')} description="Admin interface for mailing list statistics and subscriber management." pathname="/admin/email-list" />
       <div className="admin-header">
         <h2>📧 Email List Administration</h2>
         <p>View mailing list statistics and subscriber information.</p>

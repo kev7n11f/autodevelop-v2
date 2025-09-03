@@ -1,8 +1,10 @@
 import './Pages.css';
+import SEO, { composeTitle } from './SEO';
 
 export default function About() {
   return (
     <div className="page-content">
+  <SEO title={composeTitle('About')} description="Learn about AutoDevelop.ai and how our AI-powered platform helps developers and creators build amazing projects." url="https://autodevelop.ai/about" />
       <div className="page-header">
         <h1>About AutoDevelop.ai</h1>
         <p className="page-subtitle">Empowering developers and entrepreneurs to bring their ideas to life with AI-powered assistance.</p>

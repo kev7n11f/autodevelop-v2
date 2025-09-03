@@ -1,0 +1,3 @@
+STARTING
+LISTENING {"address":"127.0.0.1","family":"IPv4","port":56937}
+CLOSED
