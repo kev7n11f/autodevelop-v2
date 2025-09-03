@@ -1,59 +1,115 @@
-/**
- * Vercel Serverless API Handler
- * 
- * This file provides a comprehensive API handler for Vercel deployment
- * that supports all backend API routes including pricing, payments, etc.
- */
+// Vercel serverless function that proxies all requests to the main backend server
+// This acts as a single entry point that routes to the full Express.js backend
 
-// Initialize environment variables
-require('dotenv').config();
+// Import the main backend server
+let app = null;
 
-const express = require('express');
-const cors = require('cors');
+// Initialize the app lazily
+async function getApp() {
+  if (!app) {
+    try {
+      // Import the Express app from backend
+      app = require('../backend/server.js');
+    } catch (error) {
+      console.error('Failed to import backend server:', error);
+      throw error;
+    }
+  }
+  return app;
+}
 
-// Import the backend API routes
-const backendApiRoutes = require('../backend/routes/apiRoutes');
-
-// Create Express app for serverless function
-const app = express();
-
-// Configure CORS for production
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'https://autodevelop.ai',
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key']
-}));
-
-// Parse JSON requests
-app.use(express.json({ limit: '10mb' }));
-
-// Handle OPTIONS requests for CORS
-app.options('*', cors());
-
-// Mount all backend API routes
-// Note: Vercel strips the /api prefix, so we mount directly on /
-app.use('/', backendApiRoutes);
-
-// Health check endpoint for root /api calls
-app.get('/', (req, res) => {
-  res.json({
-    status: 'healthy',
-    message: 'AutoDevelop.ai API running ✅',
-    timestamp: new Date().toISOString(),
-    version: '2.0.0'
-  });
-});
-
-// Handle 404 for unknown routes
-app.use('*', (req, res) => {
-  res.status(404).json({
-    error: 'API endpoint not found',
-    path: req.originalUrl,
-    method: req.method,
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Export as Vercel serverless function
-module.exports = app;
+// Vercel serverless function handler
+module.exports = async (req, res) => {
+  try {
+    console.log(`[Vercel Proxy] ${req.method} ${req.url}`);
+    
+    // Check for common configuration issues before trying to load the app
+    const missingRequiredEnvVars = [];
+    
+    if (!process.env.JWT_SECRET) {
+      missingRequiredEnvVars.push('JWT_SECRET');
+    }
+    
+    if (!process.env.SESSION_SECRET) {
+      missingRequiredEnvVars.push('SESSION_SECRET');
+    }
+    
+    if (!process.env.OPENAI_API_KEY) {
+      missingRequiredEnvVars.push('OPENAI_API_KEY');
+    }
+    
+    // If critical environment variables are missing, return a helpful error
+    if (missingRequiredEnvVars.length > 0) {
+      console.error('Missing required environment variables:', missingRequiredEnvVars);
+      
+      if (!res.headersSent) {
+        return res.status(500).json({
+          error: 'Server configuration error',
+          message: 'Missing required environment variables',
+          missingVariables: missingRequiredEnvVars,
+          timestamp: new Date().toISOString(),
+          url: req.url,
+          method: req.method,
+          suggestions: [
+            'Ensure all required environment variables are set in your deployment platform',
+            'Check your .env file or deployment configuration',
+            'Required variables: JWT_SECRET, SESSION_SECRET, OPENAI_API_KEY'
+          ]
+        });
+      }
+    }
+    
+    // Get the Express app
+    const expressApp = await getApp();
+    
+    // Handle the request using Express
+    expressApp(req, res);
+  } catch (error) {
+    console.error('Error in Vercel proxy function:', error);
+    
+    // Provide more specific error information
+    let errorDetails = {
+      error: 'Internal server error',
+      message: error.message,
+      timestamp: new Date().toISOString(),
+      url: req.url,
+      method: req.method
+    };
+    
+    // Check for common error patterns
+    if (error.message.includes('MODULE_NOT_FOUND')) {
+      errorDetails.category = 'dependency_error';
+      errorDetails.suggestions = [
+        'Check if all dependencies are properly installed',
+        'Verify the build process completed successfully',
+        'Ensure package.json is configured correctly'
+      ];
+    } else if (error.message.includes('Cannot find module')) {
+      errorDetails.category = 'module_error';
+      errorDetails.suggestions = [
+        'Check if the backend server file exists',
+        'Verify the file path is correct',
+        'Ensure the build process included all necessary files'
+      ];
+    } else if (error.message.includes('SQLITE') || error.message.includes('database')) {
+      errorDetails.category = 'database_error';
+      errorDetails.suggestions = [
+        'Check database configuration',
+        'Verify database file permissions',
+        'Ensure the database directory exists'
+      ];
+    } else {
+      errorDetails.category = 'unknown_error';
+      errorDetails.suggestions = [
+        'Check server logs for more details',
+        'Verify all environment variables are set',
+        'Contact support if the issue persists'
+      ];
+    }
+    
+    // Ensure response is properly handled
+    if (!res.headersSent) {
+      res.status(500).json(errorDetails);
+    }
+  }
+};
