@@ -1,8 +1,10 @@
 import './Pages.css';
+import SEO, { composeTitle } from './SEO';
 
 export default function TermsOfService() {
   return (
     <div className="page-content">
+  <SEO title={composeTitle('Terms of Service')} description="Review the terms of service for using AutoDevelop.ai and our AI-powered development tools." url="https://autodevelop.ai/terms" />
       <div className="page-header">
         <h1>Terms of Service</h1>
         <p className="page-subtitle">These terms govern your use of AutoDevelop.ai and our AI-powered development platform.</p>

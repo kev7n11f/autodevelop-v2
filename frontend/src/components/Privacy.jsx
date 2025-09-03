@@ -1,8 +1,10 @@
 import './Pages.css';
+import SEO, { composeTitle } from './SEO';
 
 export default function Privacy() {
   return (
     <div className="page-content">
+  <SEO title={composeTitle('Privacy Policy')} description="Read the privacy policy for AutoDevelop.ai. Learn how we protect your data and respect your privacy." url="https://autodevelop.ai/privacy" />
       <div className="page-header">
         <h1>Privacy Policy</h1>
         <p className="page-subtitle">Your privacy is important to us. This policy explains what we collect, why, how we use it, and the controls you have.</p>

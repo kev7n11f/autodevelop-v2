@@ -1,17 +1,16 @@
 // Vercel serverless function that proxies all requests to the main backend server
 // This acts as a single entry point that routes to the full Express.js backend
 
-// Import the main backend server
-let app = null;
+const logger = require('../backend/utils/logger');
 
-// Initialize the app lazily
+// Import the main backend server lazily
+let app = null;
 async function getApp() {
   if (!app) {
     try {
-      // Import the Express app from backend
       app = require('../backend/server.js');
     } catch (error) {
-      console.error('Failed to import backend server:', error);
+      logger.error('Failed to import backend server', { error: error.message });
       throw error;
     }
   }
@@ -21,27 +20,27 @@ async function getApp() {
 // Vercel serverless function handler
 module.exports = async (req, res) => {
   try {
-    console.log(`[Vercel Proxy] ${req.method} ${req.url}`);
-    
+    logger.info('Vercel proxy accessed', { method: req.method, url: req.url });
+
     // Check for common configuration issues before trying to load the app
     const missingRequiredEnvVars = [];
-    
+
     if (!process.env.JWT_SECRET) {
       missingRequiredEnvVars.push('JWT_SECRET');
     }
-    
+
     if (!process.env.SESSION_SECRET) {
       missingRequiredEnvVars.push('SESSION_SECRET');
     }
-    
+
     if (!process.env.OPENAI_API_KEY) {
       missingRequiredEnvVars.push('OPENAI_API_KEY');
     }
-    
+
     // If critical environment variables are missing, return a helpful error
     if (missingRequiredEnvVars.length > 0) {
-      console.error('Missing required environment variables:', missingRequiredEnvVars);
-      
+      logger.error('Missing required environment variables', { missing: missingRequiredEnvVars });
+
       if (!res.headersSent) {
         return res.status(500).json({
           error: 'Server configuration error',
@@ -58,15 +57,15 @@ module.exports = async (req, res) => {
         });
       }
     }
-    
+
     // Get the Express app
     const expressApp = await getApp();
-    
+
     // Handle the request using Express
     expressApp(req, res);
   } catch (error) {
-    console.error('Error in Vercel proxy function:', error);
-    
+    logger.error('Error in Vercel proxy function', { error: error.message });
+
     // Provide more specific error information
     let errorDetails = {
       error: 'Internal server error',
@@ -75,7 +74,7 @@ module.exports = async (req, res) => {
       url: req.url,
       method: req.method
     };
-    
+
     // Check for common error patterns
     if (error.message.includes('MODULE_NOT_FOUND')) {
       errorDetails.category = 'dependency_error';
@@ -106,7 +105,7 @@ module.exports = async (req, res) => {
         'Contact support if the issue persists'
       ];
     }
-    
+
     // Ensure response is properly handled
     if (!res.headersSent) {
       res.status(500).json(errorDetails);
