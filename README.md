@@ -18,6 +18,9 @@ AutoDevelop.ai is a modern, full-stack platform that empowers developers and ent
 - **Mailing List System (Get Updates)**: Double opt-in, rate-limited, GDPR-aligned subscriber collection distinct from paid plans.
 - **Admin Observability**: Real-time usage stats, diagnostics, audit trail, and fraud safeguards.
 
+## Copilot Instructions  
+For AI-assisted development, please refer to our [Copilot Instructions](.github/copilot-instructions.md). This guide ensures all generated code aligns with autodevelop-v2’s modular architecture, subscription logic, and security standards.
+
 ## Subscription & Usage Gating
 
 Free users are limited by environment-configurable daily and monthly message caps. Subscribed users (Stripe) have unlimited (or higher) limits.
