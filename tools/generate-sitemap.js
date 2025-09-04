@@ -79,7 +79,13 @@ const urlEntries = Array.from(discovered).map((route) => {
 
 const urlset = urlEntries
   .map(({ loc, lastmod }) => {
-    return `  <url>\n    <loc>${loc}</loc>${lastmod ? `\n    <lastmod>${lastmod}</lastmod>` : ''}\n    <priority>0.8</priority>\n  </url>`;
+    // Set priority based on page importance
+    let priority = '0.8'; // default
+    if (loc.endsWith('/')) priority = '1.0'; // homepage
+    else if (loc.includes('/admin/')) priority = '0.3'; // admin pages
+    else if (loc.includes('/privacy') || loc.includes('/terms')) priority = '0.5'; // legal pages
+    
+    return `  <url>\n    <loc>${loc}</loc>${lastmod ? `\n    <lastmod>${lastmod}</lastmod>` : ''}\n    <priority>${priority}</priority>\n  </url>`;
   })
   .join('\n');
 
