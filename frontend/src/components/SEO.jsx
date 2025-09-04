@@ -8,6 +8,8 @@ const DEFAULT_DESCRIPTION = 'AutoDevelop.ai helps you build and ship software fa
 
 export function composeTitle(title) {
   if (!title) return DEFAULT_TITLE;
+  // Don't add suffix if title already contains AutoDevelop.ai
+  if (title.includes('AutoDevelop.ai')) return title;
   return `${title} · AutoDevelop.ai`;
 }
 
