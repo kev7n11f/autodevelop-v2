@@ -2,7 +2,7 @@ import React from 'react';
 import { Helmet } from 'react-helmet-async';
 import { ogImageFor } from '../utils/og';
 
-const SITE_URL = process.env.REACT_APP_SITE_URL || 'https://autodevelop.ai';
+const SITE_URL = import.meta.env.VITE_SITE_URL || 'https://autodevelop.ai';
 const DEFAULT_TITLE = 'AutoDevelop.ai — AI tools for faster development';
 const DEFAULT_DESCRIPTION = 'AutoDevelop.ai helps you build and ship software faster using AI assistants, templates and integrations.';
 
