@@ -166,6 +166,23 @@ app.get('/health', (_, res) => {
     isRender: !!process.env.RENDER
   };
   
+  // Add feature availability status
+  healthStatus.features = {
+    authentication: 'available',
+    chat: process.env.OPENAI_API_KEY ? 'available' : 'disabled (no API key)',
+    payments: process.env.STRIPE_SECRET_KEY ? 'available' : 'disabled (no API key)',
+    email: process.env.SENDGRID_API_KEY ? 'available' : 'disabled (no API key)'
+  };
+  
+  // Add helpful setup message for development
+  if (!process.env.OPENAI_API_KEY || !process.env.STRIPE_SECRET_KEY || !process.env.SENDGRID_API_KEY) {
+    healthStatus.setup = {
+      message: 'Some features are disabled due to missing API keys',
+      help: 'See GETTING_STARTED.md for configuration instructions',
+      test: 'Run "node test-system.js" to see detailed status'
+    };
+  }
+  
   res.json(healthStatus);
 });
 
