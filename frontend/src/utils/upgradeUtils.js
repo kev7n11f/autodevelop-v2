@@ -1,8 +1,18 @@
+import { checkSystemStatus } from './systemStatus';
+
 // Shared utility for handling upgrade/checkout flow
 export const handleUpgrade = async () => {
   const userId = localStorage.getItem('userId') || 'demo-user';
   const email = localStorage.getItem('userEmail') || 'demo@autodevelop.ai';
   const name = localStorage.getItem('userName') || 'Demo User';
+  
+  // Check system status first to provide better user feedback
+  const status = await checkSystemStatus();
+  
+  if (!status.stripe) {
+    alert(`Payment Processing Unavailable\n\nOur payment system is currently being configured. Please try again later or contact support.\n\nStatus: Stripe ${status.stripe ? '✅ Available' : '⚠️ Configuring...'}`);
+    return;
+  }
   
   try {
     const res = await fetch('/api/payments/stripe/checkout', {
