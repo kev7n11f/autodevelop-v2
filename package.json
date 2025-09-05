@@ -3,37 +3,25 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+<<<<<<< HEAD
     "dev": "concurrently \"nodemon backend/server.js\" \"npm --prefix frontend run dev\"",
     "build": "npm install && cd frontend && npm install && npm run build",
     "start": "node api/index.js",
     "vercel-build": "npm install && cd frontend && npm install && npm run build",
     "preview": "npm --prefix frontend run preview",
     "lint": "npm --prefix frontend run lint"
+=======
+    "build": "cd frontend && npm run build",
+    "start": "node backend/server.js",
+    "dev": "vercel dev",
+    "create-stripe-products": "node scripts/create_stripe_products.js"
+>>>>>>> 5530e6e2b92197f28c69b685cbd6da53f1c05bbe
   },
   "dependencies": {
-    "@sendgrid/mail": "^8.1.5",
-    "bcrypt": "^6.0.0",
-    "compression": "^1.8.1",
-    "connect-sqlite3": "^0.9.16",
-    "cookie-parser": "^1.4.7",
-    "cors": "^2.8.5",
-    "dotenv": "^16.6.1",
-    "express": "^4.21.2",
-    "express-rate-limit": "^7.4.1",
-    "express-session": "^1.18.2",
-    "express-slow-down": "^2.0.3",
-    "helmet": "^8.0.0",
-    "jsonwebtoken": "^9.0.2",
-    "node-fetch": "^2.7.0",
-    "openai": "^4.73.0",
-    "passport": "^0.7.0",
-    "passport-google-oauth20": "^2.0.0",
-    "sqlite3": "^5.1.7",
-    "stripe": "^18.4.0",
-    "winston": "^3.17.0"
+    "stripe": "^11.0.0",
+    "dotenv": "^16.0.0"
   },
-  "devDependencies": {
-    "concurrently": "^7.6.0",
-    "nodemon": "^3.0.3"
+  "engines": {
+    "node": ">=18"
   }
 }
