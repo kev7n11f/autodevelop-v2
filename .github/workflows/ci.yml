@@ -18,10 +18,8 @@ jobs:
       - name: Clean frontend node_modules and lockfile
         run: |
           rm -rf frontend/node_modules frontend/package-lock.json
-      - name: Reinstall frontend deps
+      - name: Reinstall frontend dependencies
         run: npm --prefix frontend install
-      # - name: Generate sitemap
-      #   run: node tools/generate-sitemap.js
       - name: Build frontend
         run: npm --prefix frontend run build
 
