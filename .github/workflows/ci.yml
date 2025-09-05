@@ -15,8 +15,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18
-      - name: Install root deps
-        run: npm ci
+      #- name: Install root deps
+      # run: npm ci
       - name: Install frontend deps
         run: npm --prefix frontend ci
       - name: Generate sitemap
