@@ -244,8 +244,14 @@ async function runTests() {
     
     if (failed > 0) {
       console.log('⚙️  Optional Features Need Configuration:');
-      if (failed >= 1) {
+      if (typeof aiChatPassed !== 'undefined' && !aiChatPassed) {
         console.log('  - AI Chat: Set OPENAI_API_KEY in .env file');
+      }
+      if (typeof stripePassed !== 'undefined' && !stripePassed) {
+        console.log('  - Payments: Set Stripe keys in .env file');
+      }
+      if (typeof sendgridPassed !== 'undefined' && !sendgridPassed) {
+        console.log('  - Email: Set SENDGRID_API_KEY in .env file');
       }
       console.log();
       console.log('💡 Good News: Your AutoDevelop.ai system IS working!');
