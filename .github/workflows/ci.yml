@@ -20,8 +20,8 @@ jobs:
           rm -rf frontend/node_modules frontend/package-lock.json
       - name: Reinstall frontend deps
         run: npm --prefix frontend install
-      - name: Generate sitemap
-        run: node tools/generate-sitemap.js
+      # - name: Generate sitemap
+      #   run: node tools/generate-sitemap.js
       - name: Build frontend
         run: npm --prefix frontend run build
 
