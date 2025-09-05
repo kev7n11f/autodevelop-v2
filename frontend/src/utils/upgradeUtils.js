@@ -16,10 +16,23 @@ export const handleUpgrade = async () => {
     if (data.url) {
       window.location.href = data.url;
     } else {
-      alert('Failed to start checkout. Please try again.');
+      // More informative error message
+      const errorMsg = data.error || 'Failed to start checkout';
+      const details = data.details || 'Stripe may not be configured properly. Please contact support.';
+      
+      console.error('Checkout failed:', { error: errorMsg, details });
+      
+      // Show a more user-friendly message
+      alert(`Unable to process checkout: ${errorMsg}\n\nDetails: ${details}\n\nPlease contact support or try again later.`);
     }
   } catch (e) {
     console.error('Upgrade error:', e);
-    alert('Network error. Please try again.');
+    
+    // Check if it's a network error or server error
+    if (e.name === 'TypeError' && e.message.includes('fetch')) {
+      alert('Network connection error. Please check your internet connection and try again.');
+    } else {
+      alert('Service temporarily unavailable. The payment system is being configured. Please try again later.');
+    }
   }
 };
