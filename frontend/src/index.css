@@ -263,6 +263,22 @@ input:focus, textarea:focus, select:focus {
     width: 48px;
     height: 48px;
   }
+  
+  /* Hide floating upgrade button on mobile to avoid confusion with hero button */
+  .floating-upgrade-btn {
+    display: none;
+  }
+  
+  /* Improve mobile hero button spacing */
+  .hero-actions {
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  
+  .hero-actions .btn {
+    width: 100%;
+    max-width: 280px;
+  }
 }
 
 /* Utility Classes */
