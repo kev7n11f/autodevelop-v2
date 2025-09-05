@@ -43,14 +43,20 @@ try {
     message: hasModernFormat ? '✅ Modern buildCommand format' : '⚠️ Using legacy builds format'
   });
   
-  // Check for proper runtime specification in functions
-  const hasNodeRuntime = vercelConfig.functions && 
+  // Check runtime configuration - either auto-detection or valid runtime specification
+  const hasAutoDetection = !vercelConfig.functions;
+  const hasValidRuntime = vercelConfig.functions && 
     vercelConfig.functions['api/*.js'] && 
-    vercelConfig.functions['api/*.js'].runtime === '@vercel/node';
+    (vercelConfig.functions['api/*.js'].runtime === 'nodejs18.x' || 
+     vercelConfig.functions['api/*.js'].runtime === 'nodejs20.x');
+  
+  const runtimeConfigValid = hasAutoDetection || hasValidRuntime;
   checks.push({
     name: 'Node.js runtime configuration',
-    passed: hasNodeRuntime,
-    message: hasNodeRuntime ? '✅ Proper @vercel/node runtime' : '❌ Invalid runtime configuration'
+    passed: runtimeConfigValid,
+    message: runtimeConfigValid 
+      ? (hasAutoDetection ? '✅ Auto-detection enabled' : '✅ Valid runtime specified')
+      : '❌ Invalid runtime configuration'
   });
   
 } catch (error) {
