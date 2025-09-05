@@ -4,12 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "concurrently \"nodemon backend/server.js\" \"npm --prefix frontend run dev\"",
-    "build": "cd frontend && npm install && npm run build",
-    "start": "node backend/server.js",
-    "build:frontend": "npm --prefix frontend run build",
+    "build": "npm install && cd frontend && npm install && npm run build",
+    "start": "node api/index.js",
+    "vercel-build": "npm install && cd frontend && npm install && npm run build",
     "preview": "npm --prefix frontend run preview",
-    "lint": "npm --prefix frontend run lint",
-    "install:all": "npm install && npm --prefix frontend install"
+    "lint": "npm --prefix frontend run lint"
   },
   "dependencies": {
     "@sendgrid/mail": "^8.1.5",
