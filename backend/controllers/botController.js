@@ -73,7 +73,7 @@ exports.chat = [
         details: {
           reason: 'Missing OPENAI_API_KEY environment variable',
           solution: 'Add your OpenAI API key to the .env file',
-          documentation: 'See GETTING_STARTED.md for setup instructions',
+          docs: 'See GETTING_STARTED.md for setup instructions',
           note: 'The chat framework is working - it just needs an API key'
         },
         supportEmail: 'support@autodevelop.ai'
