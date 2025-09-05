@@ -1,10 +1,12 @@
+{
+  "name": "autodevelop-v2",
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "react-scripts build",
-    "start": "react-scripts start",
-    "create-stripe-products": "node scripts/create_stripe_products.js",
-    "dev": "vercel dev"
+    "build": "cd frontend && npm run build",
+    "start": "node backend/server.js",
+    "dev": "vercel dev",
+    "create-stripe-products": "node scripts/create_stripe_products.js"
   },
   "dependencies": {
     "stripe": "^11.0.0",
