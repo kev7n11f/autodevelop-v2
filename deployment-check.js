@@ -46,11 +46,11 @@ try {
   // Check for proper runtime specification in functions
   const hasNodeRuntime = vercelConfig.functions && 
     vercelConfig.functions['api/*.js'] && 
-    vercelConfig.functions['api/*.js'].runtime === 'nodejs18.x';
+    vercelConfig.functions['api/*.js'].runtime === '@vercel/node';
   checks.push({
     name: 'Node.js runtime configuration',
     passed: hasNodeRuntime,
-    message: hasNodeRuntime ? '✅ Proper nodejs18.x runtime' : '❌ Invalid runtime configuration'
+    message: hasNodeRuntime ? '✅ Proper @vercel/node runtime' : '❌ Invalid runtime configuration'
   });
   
 } catch (error) {
