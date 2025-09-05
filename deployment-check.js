@@ -35,22 +35,28 @@ requiredFiles.forEach(file => {
 try {
   const vercelConfig = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
   
-  // Check if using modern builds format
-  const hasBuilds = vercelConfig.builds && Array.isArray(vercelConfig.builds);
+  // Check if using modern format (buildCommand/outputDirectory instead of builds)
+  const hasModernFormat = vercelConfig.buildCommand && vercelConfig.outputDirectory;
   checks.push({
-    name: 'Vercel builds configuration',
-    passed: hasBuilds,
-    message: hasBuilds ? '✅ Modern builds format' : '⚠️ Using legacy format'
+    name: 'Vercel configuration format',
+    passed: hasModernFormat,
+    message: hasModernFormat ? '✅ Modern buildCommand format' : '⚠️ Using legacy builds format'
   });
   
-  // Check for proper runtime specification
-  const nodeRuntime = hasBuilds && vercelConfig.builds.some(build => 
-    build.use === '@vercel/node' || build.use.startsWith('@vercel/node@')
-  );
+  // Check runtime configuration - either auto-detection or valid runtime specification
+  const hasAutoDetection = !vercelConfig.functions;
+  const hasValidRuntime = vercelConfig.functions && 
+    vercelConfig.functions['api/*.js'] && 
+    (vercelConfig.functions['api/*.js'].runtime === 'nodejs18.x' || 
+     vercelConfig.functions['api/*.js'].runtime === 'nodejs20.x');
+  
+  const runtimeConfigValid = hasAutoDetection || hasValidRuntime;
   checks.push({
     name: 'Node.js runtime configuration',
-    passed: nodeRuntime,
-    message: nodeRuntime ? '✅ Proper @vercel/node runtime' : '❌ Invalid runtime configuration'
+    passed: runtimeConfigValid,
+    message: runtimeConfigValid 
+      ? (hasAutoDetection ? '✅ Auto-detection enabled' : '✅ Valid runtime specified')
+      : '❌ Invalid runtime configuration'
   });
   
 } catch (error) {
