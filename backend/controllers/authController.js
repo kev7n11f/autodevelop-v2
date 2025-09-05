@@ -16,7 +16,10 @@ const generateTokens = (user) => {
       id: user.id, 
       email: user.email, 
       name: user.name,
-      googleId: user.google_id 
+      googleId: user.google_id,
+      // Add randomness to ensure unique tokens
+      jti: crypto.randomBytes(16).toString('hex'),
+      iat: Math.floor(Date.now() / 1000)
     },
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }
