@@ -68,8 +68,14 @@ exports.chat = [
     if (!openai) {
       logger.error('OpenAI client not available', { clientId });
       return res.status(503).json({
-        error: 'AI service is temporarily unavailable',
-        message: 'The chatbot service is currently offline. Please try again later or contact support.',
+        error: 'AI chat service not configured',
+        message: 'The AI chat feature requires an OpenAI API key to be configured.',
+        details: {
+          reason: 'Missing OPENAI_API_KEY environment variable',
+          solution: 'Add your OpenAI API key to the .env file',
+          documentation: 'See GETTING_STARTED.md for setup instructions',
+          note: 'The chat framework is working - it just needs an API key'
+        },
         supportEmail: 'support@autodevelop.ai'
       });
     }
