@@ -24,7 +24,9 @@ module.exports = async (req, res) => {
 
     // Check for common configuration issues before trying to load the app
     const missingRequiredEnvVars = [];
+    const missingOptionalEnvVars = [];
 
+    // Check critical environment variables
     if (!process.env.JWT_SECRET) {
       missingRequiredEnvVars.push('JWT_SECRET');
     }
@@ -37,25 +39,46 @@ module.exports = async (req, res) => {
       missingRequiredEnvVars.push('OPENAI_API_KEY');
     }
 
+    // Check optional but important environment variables
+    if (!process.env.STRIPE_SECRET_KEY) {
+      missingOptionalEnvVars.push('STRIPE_SECRET_KEY (payment functionality limited)');
+    }
+
+    if (!process.env.SENDGRID_API_KEY) {
+      missingOptionalEnvVars.push('SENDGRID_API_KEY (email functionality limited)');
+    }
+
     // If critical environment variables are missing, return a helpful error
     if (missingRequiredEnvVars.length > 0) {
-      logger.error('Missing required environment variables', { missing: missingRequiredEnvVars });
+      logger.error('Missing required environment variables', { 
+        missing: missingRequiredEnvVars,
+        optional: missingOptionalEnvVars 
+      });
 
       if (!res.headersSent) {
         return res.status(500).json({
           error: 'Server configuration error',
           message: 'Missing required environment variables',
           missingVariables: missingRequiredEnvVars,
+          optionalMissing: missingOptionalEnvVars,
           timestamp: new Date().toISOString(),
           url: req.url,
           method: req.method,
           suggestions: [
-            'Ensure all required environment variables are set in your deployment platform',
-            'Check your .env file or deployment configuration',
-            'Required variables: JWT_SECRET, SESSION_SECRET, OPENAI_API_KEY'
+            'Set required environment variables in Vercel dashboard',
+            'Required: JWT_SECRET, SESSION_SECRET, OPENAI_API_KEY',
+            'Optional: STRIPE_SECRET_KEY (for payments), SENDGRID_API_KEY (for emails)',
+            'See VERCEL_DEPLOYMENT_CHECKLIST.md for detailed setup instructions'
           ]
         });
       }
+    }
+
+    // Log warnings for missing optional environment variables
+    if (missingOptionalEnvVars.length > 0) {
+      logger.warn('Missing optional environment variables - some features will be limited', { 
+        missing: missingOptionalEnvVars 
+      });
     }
 
     // Get the Express app

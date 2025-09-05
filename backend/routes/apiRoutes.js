@@ -36,6 +36,9 @@ const {
 // Authentication routes
 router.use('/auth', authRoutes);
 
+// Chat endpoint (OpenAI API)
+router.post('/chat', chat);
+
 // Mailing list endpoints
 router.post('/mailing-list/subscribe', subscribe);
 router.get('/mailing-list/confirm/:token', confirmSubscription);
