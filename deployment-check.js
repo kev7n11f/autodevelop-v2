@@ -35,22 +35,22 @@ requiredFiles.forEach(file => {
 try {
   const vercelConfig = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
   
-  // Check if using modern builds format
-  const hasBuilds = vercelConfig.builds && Array.isArray(vercelConfig.builds);
+  // Check if using modern format (buildCommand/outputDirectory instead of builds)
+  const hasModernFormat = vercelConfig.buildCommand && vercelConfig.outputDirectory;
   checks.push({
-    name: 'Vercel builds configuration',
-    passed: hasBuilds,
-    message: hasBuilds ? '✅ Modern builds format' : '⚠️ Using legacy format'
+    name: 'Vercel configuration format',
+    passed: hasModernFormat,
+    message: hasModernFormat ? '✅ Modern buildCommand format' : '⚠️ Using legacy builds format'
   });
   
-  // Check for proper runtime specification
-  const nodeRuntime = hasBuilds && vercelConfig.builds.some(build => 
-    build.use === '@vercel/node' || build.use.startsWith('@vercel/node@')
-  );
+  // Check for proper runtime specification in functions
+  const hasNodeRuntime = vercelConfig.functions && 
+    vercelConfig.functions['api/*.js'] && 
+    vercelConfig.functions['api/*.js'].runtime === 'nodejs18.x';
   checks.push({
     name: 'Node.js runtime configuration',
-    passed: nodeRuntime,
-    message: nodeRuntime ? '✅ Proper @vercel/node runtime' : '❌ Invalid runtime configuration'
+    passed: hasNodeRuntime,
+    message: hasNodeRuntime ? '✅ Proper nodejs18.x runtime' : '❌ Invalid runtime configuration'
   });
   
 } catch (error) {
