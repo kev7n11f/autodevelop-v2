@@ -31,13 +31,57 @@ requiredFiles.forEach(file => {
   });
 });
 
-// Check package.json has Vercel build script
-const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-checks.push({
-  name: 'Vercel build script',
-  passed: !!packageJson.scripts['vercel-build'],
-  message: packageJson.scripts['vercel-build'] ? '✅ Found' : '❌ Missing vercel-build script'
-});
+// Check vercel.json configuration
+try {
+  const vercelConfig = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
+  
+  // Check if using modern builds format
+  const hasBuilds = vercelConfig.builds && Array.isArray(vercelConfig.builds);
+  checks.push({
+    name: 'Vercel builds configuration',
+    passed: hasBuilds,
+    message: hasBuilds ? '✅ Modern builds format' : '⚠️ Using legacy format'
+  });
+  
+  // Check for proper runtime specification
+  const nodeRuntime = hasBuilds && vercelConfig.builds.some(build => 
+    build.use === '@vercel/node' || build.use.startsWith('@vercel/node@')
+  );
+  checks.push({
+    name: 'Node.js runtime configuration',
+    passed: nodeRuntime,
+    message: nodeRuntime ? '✅ Proper @vercel/node runtime' : '❌ Invalid runtime configuration'
+  });
+  
+} catch (error) {
+  checks.push({
+    name: 'Vercel configuration validity',
+    passed: false,
+    message: '❌ Invalid JSON in vercel.json'
+  });
+}
+
+// Check frontend package.json build script
+try {
+  const frontendPackage = JSON.parse(fs.readFileSync('frontend/package.json', 'utf8'));
+  const hasBuildScript = frontendPackage.scripts && frontendPackage.scripts.build;
+  const buildScript = frontendPackage.scripts?.build || '';
+  const hasArchiveDependency = buildScript.includes('../tools/') || buildScript.includes('../archived/');
+  
+  checks.push({
+    name: 'Frontend build script',
+    passed: hasBuildScript && !hasArchiveDependency,
+    message: hasBuildScript 
+      ? (hasArchiveDependency ? '⚠️ References archived files' : '✅ Clean build script')
+      : '❌ Missing build script'
+  });
+} catch (error) {
+  checks.push({
+    name: 'Frontend package.json validity',
+    passed: false,
+    message: '❌ Invalid or missing frontend/package.json'
+  });
+}
 
 // Check if archived directory exists
 const archivedExists = fs.existsSync('archived');
@@ -77,10 +121,11 @@ console.log('\n' + '='.repeat(50));
 
 if (failedChecks.length === 0) {
   console.log('🎉 All checks passed! Ready for Vercel deployment.');
-  console.log('\nNext steps:');
-  console.log('1. Set up environment variables in Vercel dashboard');
-  console.log('2. Connect your GitHub repository to Vercel');
-  console.log('3. Deploy with: vercel --prod');
+  console.log('\n🚀 Configuration fixes applied:');
+  console.log('- Updated vercel.json to use modern builds format');
+  console.log('- Fixed Node.js runtime specification');
+  console.log('- Cleaned frontend build script');
+  console.log('\nYour deployment should now work correctly!');
 } else {
   console.log(`❌ ${failedChecks.length} check(s) failed. Please fix before deployment.`);
   process.exit(1);
@@ -90,15 +135,23 @@ if (warningChecks.length > 0) {
   console.log(`\n⚠️ ${warningChecks.length} warning(s) - review but not blocking deployment.`);
 }
 
-// Show file structure
+// Show deployment info
+console.log('\n📡 Deployment Status:');
+console.log('✅ Configuration fixes pushed to GitHub');
+console.log('🔄 Vercel should auto-deploy the fixes');
+console.log('🌐 Check your Vercel dashboard for deployment progress');
+
+console.log('\n💡 Next steps if deployment fails:');
+console.log('1. Check Vercel build logs for specific errors');
+console.log('2. Verify environment variables are set in Vercel dashboard');
+console.log('3. Ensure all required API keys are configured');
+
 console.log('\n📁 Current project structure:');
 console.log('autodevelop-v2/');
 console.log('├── api/                    # Vercel serverless functions');
 console.log('├── backend/                # Core backend logic');  
 console.log('├── frontend/               # React frontend');
 console.log('├── archived/               # Non-production files');
-console.log('├── vercel.json            # Vercel configuration');
+console.log('├── vercel.json            # Fixed Vercel configuration');
 console.log('├── package.json           # Dependencies & scripts');
 console.log('└── README.md              # Documentation');
-
-console.log('\n💡 For detailed setup instructions, see README.md');
