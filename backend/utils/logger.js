@@ -1,55 +1,70 @@
-const winston = require('winston');
-const path = require('path');
-
-// Create logs directory if it doesn't exist
 const fs = require('fs');
-const logDir = path.join(__dirname, '../logs');
-if (!fs.existsSync(logDir)) {
-  fs.mkdirSync(logDir, { recursive: true });
+const path = require('path');
+const os = require('os');
+
+let logger = console;
+
+// Prefer winston if present (non-fatal if not installed)
+let createWinstonLogger = null;
+try {
+  const { createLogger, format, transports } = require('winston');
+  createWinstonLogger = (opts) => createLogger(opts);
+  var winstonFormat = format;
+  var winstonTransports = transports;
+} catch (e) {
+  // winston not available — we'll use console fallback
+  createWinstonLogger = null;
 }
 
-// Custom format for structured logging
-const logFormat = winston.format.combine(
-  winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-  winston.format.errors({ stack: true }),
-  winston.format.json(),
-  winston.format.printf(({ timestamp, level, message, ...meta }) => {
-    return JSON.stringify({
-      timestamp,
-      level,
-      message,
-      ...meta
-    });
-  })
-);
+const isLambda = !!process.env.LAMBDA_TASK_ROOT;
+const envLogDir = process.env.LOG_DIR || '';
+const defaultLogDir = isLambda ? path.join(os.tmpdir(), 'backend', 'logs') : path.join(__dirname, '..', 'logs');
+const logsDir = envLogDir || defaultLogDir;
 
-// Create the logger
-const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL || 'info',
-  format: logFormat,
-  defaultMeta: { service: 'autodevelop-api' },
-  transports: [
-    // Console transport for development
-    new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.simple()
-      )
-    }),
-    // File transport for all logs
-    new winston.transports.File({
-      filename: path.join(logDir, 'app.log'),
-      maxsize: 5242880, // 5MB
-      maxFiles: 5
-    }),
-    // Separate file for errors
-    new winston.transports.File({
-      filename: path.join(logDir, 'error.log'),
-      level: 'error',
-      maxsize: 5242880, // 5MB
-      maxFiles: 5
-    })
-  ]
-});
+let useFileTransport = false;
+let fileTransportOptions = {};
+try {
+  // Try to create the directory (recursive so intermediate dirs don't fail)
+  fs.mkdirSync(logsDir, { recursive: true });
+  useFileTransport = true;
+  fileTransportOptions.filename = path.join(logsDir, 'app.log');
+} catch (err) {
+  // Fall back to console logging — do not let this crash the process
+  console.warn(`[logger] Could not create log directory "${logsDir}", falling back to console. Error: ${err && err.message}`);
+  useFileTransport = false;
+}
+
+if (createWinstonLogger) {
+  // Build transports array conditionally
+  const t = [];
+  if (useFileTransport) {
+    t.push(new winstonTransports.File({ filename: fileTransportOptions.filename, level: process.env.LOG_LEVEL || 'info' }));
+  }
+  t.push(new winstonTransports.Console({ level: process.env.LOG_LEVEL || 'info' }));
+
+  logger = createWinstonLogger({
+    level: process.env.LOG_LEVEL || 'info',
+    format: winstonFormat.combine(
+      winstonFormat.timestamp(),
+      winstonFormat.printf(({ timestamp, level, message, ...meta }) => {
+        const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : '';
+        return `${timestamp} ${level}: ${message}${metaStr}`;
+      })
+    ),
+    transports: t
+  });
+} else {
+  // Simple console wrapper with same methods used commonly
+  const wrap = (level) => (...args) => {
+    const msg = args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ');
+    console[level](`${new Date().toISOString()} ${level.toUpperCase()}: ${msg}`);
+  };
+  logger = {
+    error: wrap('error'),
+    warn: wrap('warn'),
+    info: wrap('log'),
+    debug: wrap('log')
+  };
+}
 
 module.exports = logger;
