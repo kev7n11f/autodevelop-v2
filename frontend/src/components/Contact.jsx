@@ -11,6 +11,7 @@ export default function Contact() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -18,23 +19,43 @@ export default function Contact() {
       ...prev,
       [name]: value
     }));
+    // Clear errors when user starts typing
+    if (submitError) setSubmitError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setSubmitError('');
     
-    // Simulate form submission
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    setIsSubmitting(false);
-    setIsSubmitted(true);
-    
-    // Reset form after 3 seconds
-    setTimeout(() => {
-      setIsSubmitted(false);
-      setFormData({ name: '', email: '', subject: '', message: '' });
-    }, 3000);
+    try {
+      // Simulate API call - in production this would be a real endpoint
+      const response = await fetch('/api/email/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (response.ok) {
+        setIsSubmitted(true);
+        console.log('Contact form submitted successfully');
+        
+        // Reset form after 5 seconds
+        setTimeout(() => {
+          setIsSubmitted(false);
+          setFormData({ name: '', email: '', subject: '', message: '' });
+        }, 5000);
+      } else {
+        throw new Error('Failed to send message');
+      }
+    } catch (error) {
+      console.error('Contact form error:', error);
+      setSubmitError('Failed to send message. Please try again or contact us directly at support@autodevelop.ai');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -89,6 +110,12 @@ export default function Contact() {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="contact-form">
+                {submitError && (
+                  <div className="error-message">
+                    <strong>Error:</strong> {submitError}
+                  </div>
+                )}
+                
                 <div className="form-row">
                   <div className="form-group">
                     <label htmlFor="name">Full Name *</label>
