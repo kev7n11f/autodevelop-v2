@@ -11,6 +11,7 @@ import Contact from './components/Contact';
 import Privacy from './components/Privacy';
 import TermsOfService from './components/TermsOfService';
 import Login from './components/Login';
+import LoginModal from './components/LoginModal';
 import UserProfile from './components/UserProfile';
 import MailingListModal from './components/MailingListModal';
 import NotificationBar from './components/NotificationBar';
@@ -21,6 +22,7 @@ import './App.css';
 
 function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const location = useLocation();
   const { isAuthenticated, loading } = useAuth();
 
@@ -33,48 +35,61 @@ function Navigation() {
   ];
 
   return (
-    <nav className="modern-nav">
-      <div className="nav-container">
-        <Link to="/" className="nav-logo">
-          <span className="logo-icon">🚀</span>
-          <span className="logo-text">AutoDevelop.ai</span>
-        </Link>
-        
-        <div className={`nav-menu ${isMenuOpen ? 'nav-menu-open' : ''}`}>
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`nav-link ${location.pathname === item.path ? 'nav-link-active' : ''}`}
-              onClick={() => setIsMenuOpen(false)}
-            >
-              <span className="nav-icon">{item.icon}</span>
-              <span className="nav-label">{item.label}</span>
-            </Link>
-          ))}
+    <>
+      <nav className="modern-nav">
+        <div className="nav-container">
+          <Link to="/" className="nav-logo">
+            <span className="logo-icon">🚀</span>
+            <span className="logo-text">AutoDevelop.ai</span>
+          </Link>
           
-          <div className="nav-auth">
-            {loading ? (
-              <div className="nav-loading">Loading...</div>
-            ) : isAuthenticated ? (
-              <UserProfile />
-            ) : (
-              <Login />
-            )}
+          <div className={`nav-menu ${isMenuOpen ? 'nav-menu-open' : ''}`}>
+            {navItems.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`nav-link ${location.pathname === item.path ? 'nav-link-active' : ''}`}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <span className="nav-icon">{item.icon}</span>
+                <span className="nav-label">{item.label}</span>
+              </Link>
+            ))}
+            
+            <div className="nav-auth">
+              {loading ? (
+                <div className="nav-loading">Loading...</div>
+              ) : isAuthenticated ? (
+                <UserProfile />
+              ) : (
+                <button 
+                  className="btn btn-primary nav-login-btn"
+                  onClick={() => setIsLoginModalOpen(true)}
+                >
+                  Sign In
+                </button>
+              )}
+            </div>
           </div>
-        </div>
 
-        <button
-          className="nav-toggle"
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-          aria-label="Toggle navigation menu"
-        >
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
-      </div>
-    </nav>
+          <button
+            className="nav-toggle"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            aria-label="Toggle navigation menu"
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+        </div>
+      </nav>
+      
+      {/* Login Modal */}
+      <LoginModal 
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+      />
+    </>
   );
 }
 
