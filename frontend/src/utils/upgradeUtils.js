@@ -10,7 +10,7 @@ export const handleUpgrade = async () => {
   const status = await checkSystemStatus();
   
   if (!status.stripe) {
-    alert(`Payment Processing Unavailable\n\nOur payment system is currently being configured. Please try again later or contact support.\n\nStatus: Stripe ${status.stripe ? '✅ Available' : '⚠️ Configuring...'}`);
+    alert(`Payment Processing Unavailable\n\nOur payment system is currently being configured. Please try again later or contact support.\n\nStatus: Stripe ⚠️ Configuring...`);
     return;
   }
   
