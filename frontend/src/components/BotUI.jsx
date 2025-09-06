@@ -81,7 +81,7 @@ export default function BotUI() {
             <div key={msg.id} className={`message ${msg.type}-message`}>
               <div className="message-content">
                 {msg.content.split('\n').map((line, index) => (
-                  <p key={index}>{line}</p>
+                  <p key={`${msg.id}-${index}`}>{line}</p>
                 ))}
               </div>
             </div>
