@@ -59,3 +59,4 @@ coverage/
 
 # Test environment
 .env.test
+.vercel
