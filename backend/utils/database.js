@@ -292,15 +292,79 @@ class Database {
     });
     const existingCols = new Set(info.map(r => r.name));
     
-    // Make google_id nullable if it's not already
+    // Check if google_id has NOT NULL constraint by trying to insert a null value
+    try {
+      // Test if we can insert null values for google_id
+      await this.runQuery(`INSERT INTO users (google_id, email, name, verified_email) VALUES (?, ?, ?, ?)`, 
+        [null, 'test_constraint_check@example.com', 'Test', false]);
+      // If successful, delete the test record
+      await this.runQuery(`DELETE FROM users WHERE email = ?`, ['test_constraint_check@example.com']);
+      logger.info('google_id column allows NULL values - no migration needed');
+    } catch (error) {
+      if (error.message.includes('NOT NULL constraint failed: users.google_id')) {
+        logger.info('google_id has NOT NULL constraint, migrating users table...');
+        await this.migrateUsersTableForCustomAuth();
+      }
+    }
+    
+    // Make sure password_hash column exists
     if (!existingCols.has('password_hash')) {
       await this.runQuery(`ALTER TABLE users ADD COLUMN password_hash TEXT`);
       logger.info('Added password_hash column to users table');
     }
 
-    // Check if google_id is still NOT NULL constraint (this is harder to change in SQLite)
-    // We'll handle this by creating users without google_id for password auth
     logger.info('Custom authentication columns ensured in users table');
+  }
+
+  async migrateUsersTableForCustomAuth() {
+    try {
+      // Create backup of existing users
+      await this.runQuery(`CREATE TABLE IF NOT EXISTS users_backup AS SELECT * FROM users`);
+      
+      // Drop the old users table
+      await this.runQuery(`DROP TABLE users`);
+      
+      // Create new users table with correct schema (google_id can be NULL)
+      const createUsersTableSQL = `
+        CREATE TABLE users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          google_id TEXT UNIQUE,
+          email TEXT UNIQUE NOT NULL,
+          password_hash TEXT,
+          name TEXT NOT NULL,
+          avatar_url TEXT,
+          locale TEXT,
+          verified_email BOOLEAN DEFAULT FALSE,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          last_login_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `;
+      await this.runQuery(createUsersTableSQL);
+      
+      // Migrate data back from backup
+      await this.runQuery(`
+        INSERT INTO users (id, google_id, email, password_hash, name, avatar_url, locale, verified_email, created_at, updated_at, last_login_at)
+        SELECT id, google_id, email, password_hash, name, avatar_url, locale, verified_email, created_at, updated_at, last_login_at 
+        FROM users_backup
+      `);
+      
+      // Drop backup table
+      await this.runQuery(`DROP TABLE users_backup`);
+      
+      logger.info('Successfully migrated users table to allow NULL google_id');
+    } catch (error) {
+      logger.error('Error migrating users table:', error);
+      // Try to restore from backup if it exists
+      try {
+        await this.runQuery(`DROP TABLE IF EXISTS users`);
+        await this.runQuery(`ALTER TABLE users_backup RENAME TO users`);
+        logger.info('Restored users table from backup');
+      } catch (restoreError) {
+        logger.error('Failed to restore from backup:', restoreError);
+      }
+      throw error;
+    }
   }
 
   async getSubscriberByEmail(email) {
@@ -945,12 +1009,12 @@ class Database {
   async createUserWithPassword(userData) {
     const { email, password_hash, name, avatarUrl, locale, verifiedEmail } = userData;
     const insertSQL = `
-      INSERT INTO users (email, password_hash, name, avatar_url, locale, verified_email)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO users (google_id, email, password_hash, name, avatar_url, locale, verified_email)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
 
     return new Promise((resolve, reject) => {
-      this.db.run(insertSQL, [email, password_hash, name, avatarUrl, locale, verifiedEmail], function(err) {
+      this.db.run(insertSQL, [null, email, password_hash, name, avatarUrl, locale, verifiedEmail], function(err) {
         if (err) {
           if (err.code === 'SQLITE_CONSTRAINT' && err.message.includes('UNIQUE constraint')) {
             reject(new Error('Email already registered'));

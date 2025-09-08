@@ -8,7 +8,7 @@
 const http = require('http');
 const https = require('https');
 
-const BASE_URL = process.argv[2] || 'http://localhost:8080';
+const BASE_URL = process.argv[2] || 'http://localhost:3001';
 const TEST_EMAIL = 'test-' + Date.now() + '@example.com';
 const TEST_PASSWORD = 'TestPassword123!';
 const TEST_NAME = 'Test User';
