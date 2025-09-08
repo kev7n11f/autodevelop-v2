@@ -12,14 +12,28 @@ export default function BotUI() {
     }
   ]);
   const [isLoading, setIsLoading] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(true);
 
-  const handleSendMessage = async () => {
-    if (!message.trim()) return;
+  // Load suggestions when component mounts
+  React.useEffect(() => {
+    fetch('/api/chat/suggestions')
+      .then(response => response.json())
+      .then(data => setSuggestions(data.suggestions))
+      .catch(error => console.error('Failed to load suggestions:', error));
+  }, []);
+
+  const handleSendMessage = async (messageText = null) => {
+    const textToSend = messageText || message.trim();
+    if (!textToSend) return;
+
+    // Hide suggestions after first message
+    setShowSuggestions(false);
 
     const userMessage = {
       id: messages.length + 1,
       type: 'user',
-      content: message
+      content: textToSend
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -32,7 +46,7 @@ export default function BotUI() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: message.trim() }),
+        body: JSON.stringify({ message: textToSend }),
       });
 
       if (!response.ok) {
@@ -44,7 +58,7 @@ export default function BotUI() {
       const botResponse = {
         id: messages.length + 2,
         type: 'bot',
-        content: data.response || "I'm sorry, I'm having trouble responding right now. Please try again later."
+        content: data.reply || "I'm sorry, I'm having trouble responding right now. Please try again later."
       };
 
       setMessages(prev => [...prev, botResponse]);
@@ -66,6 +80,10 @@ export default function BotUI() {
       e.preventDefault();
       handleSendMessage();
     }
+  };
+
+  const handleSuggestionClick = (suggestion) => {
+    handleSendMessage(suggestion);
   };
 
   return (
@@ -94,6 +112,33 @@ export default function BotUI() {
             </div>
           )}
         </div>
+        
+        {/* Suggested Questions */}
+        {showSuggestions && suggestions.length > 0 && (
+          <div className="suggestions-container">
+            <h3>💡 Suggested Questions</h3>
+            <div className="suggestions-grid">
+              {suggestions.map((category) => (
+                <div key={category.id} className="suggestion-category">
+                  <h4>{category.category}</h4>
+                  <div className="suggestion-questions">
+                    {category.questions.slice(0, 2).map((question, index) => (
+                      <button
+                        key={index}
+                        className="suggestion-button"
+                        onClick={() => handleSuggestionClick(question)}
+                        disabled={isLoading}
+                      >
+                        {question}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="chat-input-container">
           <div className="chat-input">
             <input 
