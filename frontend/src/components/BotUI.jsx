@@ -8,7 +8,7 @@ export default function BotUI() {
     {
       id: 1,
       type: 'bot',
-      content: "Hello! I'm your AI development assistant. I'm here to help you build amazing projects step by step.\n\nHow can I help you today?"
+      content: "👋 Hello! I'm your AI software development assistant! I'm absolutely thrilled to help you build amazing applications, websites, and digital projects.\n\n✨ Whether you're just starting your coding journey or you're an experienced developer, I'm here to guide you step-by-step through:\n• Web development & app building\n• Programming languages & frameworks\n• Database design & APIs\n• Deployment & best practices\n• Code reviews & optimization\n\n🚀 What exciting project would you like to work on today? I can't wait to help you bring your ideas to life!"
     }
   ]);
   const [isLoading, setIsLoading] = useState(false);
