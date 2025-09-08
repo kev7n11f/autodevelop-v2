@@ -15,15 +15,23 @@ export const handleUpgrade = async () => {
   }
   
   try {
-    const res = await fetch('/api/payments/stripe/checkout', {
+    // Use the new tier-based checkout endpoint with Pro tier
+    const res = await fetch('/api/payments/stripe/checkout-tier', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, email, name })
+      body: JSON.stringify({ 
+        userId, 
+        email, 
+        name,
+        tierId: 'pro',
+        billingCycle: 'monthly'
+      })
     });
     
     const data = await res.json();
     
-    if (data.url) {
+    if (data.success && data.url) {
+      // Redirect to Stripe checkout
       window.location.href = data.url;
     } else {
       // More informative error message
