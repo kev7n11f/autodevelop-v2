@@ -14,7 +14,7 @@ const PricingPage = () => {
         const response = await fetchPricingTiers();
         setTiers(response.tiers);
         setLoading(false);
-      } catch (err) {
+      } catch {
         setError('Failed to load pricing information');
         setLoading(false);
       }
