@@ -23,9 +23,11 @@ export default [
     rules: {
       ...js.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
+      // Allow 'useAuth' and 'composeTitle' to be exported as exceptions for react-refresh HMR.
+      // These are utility hooks/components that are intentionally exported and do not trigger HMR issues.
       'react-refresh/only-export-components': [
         'warn',
-        { allowConstantExport: true },
+        { allowConstantExport: true, allowExportNames: ['useAuth', 'composeTitle'] },
       ],
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
     },
