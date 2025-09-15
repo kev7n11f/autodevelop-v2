@@ -232,7 +232,11 @@ export default function TutorialVideos() {
                   </div>
                   <h3 className="tutorial-title">{tutorial.title}</h3>
                   <p className="tutorial-description">{tutorial.description}</p>
-                  <button className="watch-btn">
+                  <button
+                    className="watch-btn"
+                    onClick={() => tutorial.url && window.open(tutorial.url, '_blank')}
+                    disabled={!tutorial.url}
+                  >
                     ▶️ Watch
                   </button>
                 </div>
