@@ -5,6 +5,11 @@ import './Pages.css';
 export default function TutorialVideos() {
   const [selectedCategory, setSelectedCategory] = useState('all');
 
+  const handleNewsletterSubscription = () => {
+    // Placeholder functionality - in production this would integrate with a newsletter service
+    alert('Thank you for your interest! Newsletter subscription functionality will be available soon. Please check back later or contact us directly.');
+  };
+
   const videoCategories = [
     { id: 'all', label: 'All Videos', icon: '🎥' },
     { id: 'getting-started', label: 'Getting Started', icon: '🚀' },
@@ -24,7 +29,8 @@ export default function TutorialVideos() {
       difficulty: "Beginner",
       featured: true,
       thumbnail: "🎬",
-      views: "12.5K"
+      views: "12.5K",
+      url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" // Placeholder URL
     },
     {
       id: 2,
@@ -35,7 +41,8 @@ export default function TutorialVideos() {
       difficulty: "Beginner",
       featured: true,
       thumbnail: "⚛️",
-      views: "8.2K"
+      views: "8.2K",
+      url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" // Placeholder URL
     },
     {
       id: 3,
@@ -46,7 +53,8 @@ export default function TutorialVideos() {
       difficulty: "Intermediate",
       featured: false,
       thumbnail: "🔌",
-      views: "6.8K"
+      views: "6.8K",
+      url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" // Placeholder URL
     },
     {
       id: 4,
@@ -57,7 +65,8 @@ export default function TutorialVideos() {
       difficulty: "Intermediate",
       featured: true,
       thumbnail: "📱",
-      views: "5.4K"
+      views: "5.4K",
+      url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" // Placeholder URL
     },
     {
       id: 5,
@@ -68,7 +77,8 @@ export default function TutorialVideos() {
       difficulty: "Advanced",
       featured: false,
       thumbnail: "🧠",
-      views: "4.9K"
+      views: "4.9K",
+      url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" // Placeholder URL
     },
     {
       id: 6,
@@ -79,7 +89,8 @@ export default function TutorialVideos() {
       difficulty: "Intermediate",
       featured: false,
       thumbnail: "🚀",
-      views: "7.1K"
+      views: "7.1K",
+      url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" // Placeholder URL
     },
     {
       id: 7,
@@ -90,7 +101,8 @@ export default function TutorialVideos() {
       difficulty: "Advanced",
       featured: false,
       thumbnail: "🗄️",
-      views: "3.6K"
+      views: "3.6K",
+      url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" // Placeholder URL
     },
     {
       id: 8,
@@ -101,7 +113,8 @@ export default function TutorialVideos() {
       difficulty: "Advanced",
       featured: false,
       thumbnail: "📲",
-      views: "2.8K"
+      views: "2.8K",
+      url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" // Placeholder URL
     }
   ];
 
@@ -289,7 +302,10 @@ export default function TutorialVideos() {
           <div className="newsletter-content">
             <h2>Stay Updated</h2>
             <p>Get notified when we release new tutorials and learning materials.</p>
-            <button className="btn btn-primary">
+            <button 
+              className="btn btn-primary"
+              onClick={handleNewsletterSubscription}
+            >
               📧 Subscribe to Updates
             </button>
           </div>
