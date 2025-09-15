@@ -168,14 +168,14 @@ export default function Blog() {
             <h2>Join the Conversation</h2>
             <p>Have something to share? We'd love to hear from you!</p>
             <div className="participation-actions">
-              <button className="btn btn-primary">
-                ✍️ Write a Post
+              <button className="btn btn-primary" disabled title="Coming Soon">
+                ✍️ Write a Post (Coming Soon)
               </button>
-              <button className="btn btn-secondary">
-                💬 Join Discussions
+              <button className="btn btn-secondary" disabled title="Coming Soon">
+                💬 Join Discussions (Coming Soon)
               </button>
-              <button className="btn btn-secondary">
-                🎯 Share Your Project
+              <button className="btn btn-secondary" disabled title="Coming Soon">
+                🎯 Share Your Project (Coming Soon)
               </button>
             </div>
           </div>
