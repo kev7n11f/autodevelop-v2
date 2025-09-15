@@ -1,8 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import SEO, { composeTitle } from './SEO';
 import './Pages.css';
 
 export default function Homepage() {
+  const navigate = useNavigate();
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  const handleNavigation = (path, action = 'navigate') => {
+    setIsNavigating(true);
+    
+    // Add a small delay for better UX feedback
+    setTimeout(() => {
+      if (action === 'navigate') {
+        navigate(path);
+      } else {
+        window.location.href = path;
+      }
+      setIsNavigating(false);
+    }, 300);
+  };
   return (
     <div className="page-container">
       <SEO 
@@ -116,11 +133,19 @@ export default function Homepage() {
             <h2>Ready to Start Building?</h2>
             <p>Join thousands of developers who are already using AutoDevelop.ai to bring their ideas to life.</p>
             <div className="cta-actions">
-              <button className="btn btn-primary btn-large" onClick={() => window.location.href = '/chat'}>
-                🚀 Start Building Now
+              <button 
+                className={`btn btn-primary btn-large ${isNavigating ? 'loading' : ''}`} 
+                onClick={() => handleNavigation('/chat')}
+                disabled={isNavigating}
+              >
+                {isNavigating ? '⏳ Loading...' : '🚀 Start Building Now'}
               </button>
-              <button className="btn btn-secondary btn-large" onClick={() => window.location.href = '/tutorials'}>
-                📚 Learn How It Works
+              <button 
+                className={`btn btn-secondary btn-large ${isNavigating ? 'loading' : ''}`} 
+                onClick={() => handleNavigation('/tutorials')}
+                disabled={isNavigating}
+              >
+                {isNavigating ? '⏳ Loading...' : '📚 Learn How It Works'}
               </button>
             </div>
             <p className="cta-note">No credit card required • Free to start • Upgrade anytime</p>

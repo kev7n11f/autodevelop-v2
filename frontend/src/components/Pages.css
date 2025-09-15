@@ -772,6 +772,173 @@
   box-shadow: var(--shadow-lg);
 }
 
+/* Tutorials Placeholder Styles */
+.tutorials-placeholder {
+  text-align: center;
+  padding: var(--space-16) var(--space-8);
+  background: var(--bg-primary);
+  border-radius: var(--radius-xl);
+  border: 2px dashed var(--border-color);
+  margin: var(--space-8) 0;
+}
+
+.placeholder-content {
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.placeholder-icon {
+  font-size: 4rem;
+  display: block;
+  margin-bottom: var(--space-4);
+  opacity: 0.7;
+}
+
+.tutorials-placeholder h3 {
+  color: var(--text-primary);
+  margin-bottom: var(--space-3);
+  font-size: var(--font-size-2xl);
+}
+
+.tutorials-placeholder p {
+  color: var(--text-secondary);
+  margin-bottom: var(--space-6);
+  line-height: 1.6;
+}
+
+/* Newsletter Success Styles */
+.newsletter-success {
+  text-align: center;
+  padding: var(--space-4);
+  background: var(--success-bg, #f0f8ff);
+  border: 1px solid var(--success-border, #4caf50);
+  border-radius: var(--radius-lg);
+}
+
+.success-icon {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: var(--space-2);
+}
+
+.newsletter-success p {
+  color: var(--success-color, #2e7d32);
+  margin: 0;
+  font-weight: 500;
+}
+
+.btn.loading {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Community Modal Styles */
+.community-modal {
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.write-post-form,
+.project-form {
+  padding: var(--space-4);
+}
+
+.form-group {
+  margin-bottom: var(--space-4);
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+  width: 100%;
+  padding: var(--space-3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: var(--font-size-base);
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px var(--primary-color-alpha);
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.form-actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  margin-top: var(--space-6);
+}
+
+/* Discussions List Styles */
+.discussions-list {
+  padding: var(--space-4);
+}
+
+.discussion-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-3);
+  background: var(--bg-primary);
+  transition: all var(--transition-base);
+}
+
+.discussion-item:hover {
+  background: var(--bg-secondary);
+  transform: translateY(-1px);
+}
+
+.discussion-info h3 {
+  margin: 0 0 var(--space-2) 0;
+  font-size: var(--font-size-lg);
+  color: var(--text-primary);
+}
+
+.discussion-info p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.discussion-stats span {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  background: var(--primary-light);
+  color: var(--primary-color);
+}
+
+.discussion-actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: center;
+  padding: var(--space-4);
+  border-top: 1px solid var(--border-light);
+}
+
 .post-content, .tutorial-info {
   padding: var(--space-6);
 }

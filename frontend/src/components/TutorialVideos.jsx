@@ -5,9 +5,19 @@ import './Pages.css';
 export default function TutorialVideos() {
   const [selectedCategory, setSelectedCategory] = useState('all');
 
+  const [newsletterStatus, setNewsletterStatus] = useState('');
+
   const handleNewsletterSubscription = () => {
     // Placeholder functionality - in production this would integrate with a newsletter service
-    alert('Thank you for your interest! Newsletter subscription functionality will be available soon. Please check back later or contact us directly.');
+    setNewsletterStatus('subscribing');
+    
+    // Simulate API call
+    setTimeout(() => {
+      setNewsletterStatus('success');
+      setTimeout(() => {
+        setNewsletterStatus('');
+      }, 3000);
+    }, 1000);
   };
 
   const videoCategories = [
@@ -167,10 +177,10 @@ export default function TutorialVideos() {
       </section>
 
       {/* Featured Tutorials */}
-      {featuredTutorials.length > 0 && (
-        <section className="featured-tutorials-section">
-          <div className="container">
-            <h2 className="section-title">Featured Tutorials</h2>
+      <section className="featured-tutorials-section">
+        <div className="container">
+          <h2 className="section-title">Featured Tutorials</h2>
+          {featuredTutorials.length > 0 ? (
             <div className="featured-tutorials-grid">
               {featuredTutorials.map(tutorial => (
                 <div key={tutorial.id} className="featured-tutorial-card">
@@ -186,7 +196,7 @@ export default function TutorialVideos() {
                       >
                         {tutorial.difficulty}
                       </span>
-                      <span className="view-count">{tutorial.views} views</span>
+                      <span className="view-count">{tutorial.views || 'Loading...'} views</span>
                     </div>
                     <h3 className="tutorial-title">{tutorial.title}</h3>
                     <p className="tutorial-description">{tutorial.description}</p>
@@ -200,9 +210,20 @@ export default function TutorialVideos() {
                 </div>
               ))}
             </div>
-          </div>
-        </section>
-      )}
+          ) : (
+            <div className="tutorials-placeholder">
+              <div className="placeholder-content">
+                <span className="placeholder-icon">🎥</span>
+                <h3>Tutorials Coming Soon!</h3>
+                <p>We're working hard to bring you amazing video tutorials. Check back soon for our latest content!</p>
+                <button className="btn btn-secondary" onClick={handleNewsletterSubscription}>
+                  Get Notified When Available
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* Category Filter */}
       <section className="tutorials-filter-section">
@@ -301,12 +322,24 @@ export default function TutorialVideos() {
           <div className="newsletter-content">
             <h2>Stay Updated</h2>
             <p>Get notified when we release new tutorials and learning materials.</p>
-            <button 
-              className="btn btn-primary"
-              onClick={handleNewsletterSubscription}
-            >
-              📧 Subscribe to Updates
-            </button>
+            {newsletterStatus === 'success' ? (
+              <div className="newsletter-success">
+                <span className="success-icon">✅</span>
+                <p>Thank you! You'll be notified when new tutorials are available.</p>
+              </div>
+            ) : (
+              <button 
+                className={`btn btn-primary ${newsletterStatus === 'subscribing' ? 'loading' : ''}`}
+                onClick={handleNewsletterSubscription}
+                disabled={newsletterStatus === 'subscribing'}
+              >
+                {newsletterStatus === 'subscribing' ? (
+                  <>⏳ Subscribing...</>
+                ) : (
+                  <>📧 Subscribe to Updates</>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </section>

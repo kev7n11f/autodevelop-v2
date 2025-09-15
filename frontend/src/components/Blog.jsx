@@ -237,16 +237,26 @@ export default function Blog() {
     setSelectedPost(null);
   };
 
+  const [showWritePostModal, setShowWritePostModal] = useState(false);
+  const [showDiscussionsModal, setShowDiscussionsModal] = useState(false);
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  
   const handleWritePost = () => {
-    alert('Write a Post feature coming soon! This will allow community members to contribute their own blog posts and tutorials.');
+    setShowWritePostModal(true);
   };
 
   const handleJoinDiscussions = () => {
-    alert('Join Discussions feature coming soon! This will provide a forum-style interface for community discussions.');
+    setShowDiscussionsModal(true);
   };
 
   const handleShareProject = () => {
-    alert('Share Your Project feature coming soon! This will allow you to showcase your AutoDevelop.ai projects to the community.');
+    setShowProjectModal(true);
+  };
+
+  const closeCommunityModal = () => {
+    setShowWritePostModal(false);
+    setShowDiscussionsModal(false);
+    setShowProjectModal(false);
   };
 
   return (
@@ -358,6 +368,136 @@ export default function Blog() {
           </div>
         </div>
       </section>
+
+      {/* Write Post Modal */}
+      {showWritePostModal && (
+        <div className="modal-overlay" onClick={closeCommunityModal}>
+          <div className="modal-content community-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>✍️ Write a Post</h2>
+              <button className="modal-close" onClick={closeCommunityModal} aria-label="Close modal">✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="write-post-form">
+                <div className="form-group">
+                  <label>Post Title</label>
+                  <input type="text" placeholder="Enter your post title..." className="form-input" />
+                </div>
+                <div className="form-group">
+                  <label>Category</label>
+                  <select className="form-select">
+                    <option>Tutorials</option>
+                    <option>Showcase</option>
+                    <option>Best Practices</option>
+                    <option>Discussions</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Content</label>
+                  <textarea rows="10" placeholder="Share your knowledge, experiences, or questions with the community..." className="form-textarea"></textarea>
+                </div>
+                <div className="form-actions">
+                  <button className="btn btn-secondary" onClick={closeCommunityModal}>Cancel</button>
+                  <button className="btn btn-primary">📝 Publish Post</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Join Discussions Modal */}
+      {showDiscussionsModal && (
+        <div className="modal-overlay" onClick={closeCommunityModal}>
+          <div className="modal-content community-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>💬 Community Discussions</h2>
+              <button className="modal-close" onClick={closeCommunityModal} aria-label="Close modal">✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="discussions-list">
+                <div className="discussion-item">
+                  <div className="discussion-info">
+                    <h3>🚀 Best practices for AI-assisted development</h3>
+                    <p>42 replies • Last reply 2 hours ago by @developer123</p>
+                  </div>
+                  <div className="discussion-stats">
+                    <span>🔥 Hot</span>
+                  </div>
+                </div>
+                <div className="discussion-item">
+                  <div className="discussion-info">
+                    <h3>💡 Feature request: Dark mode for the editor</h3>
+                    <p>18 replies • Last reply 1 day ago by @uidesigner</p>
+                  </div>
+                  <div className="discussion-stats">
+                    <span>💡 Feature</span>
+                  </div>
+                </div>
+                <div className="discussion-item">
+                  <div className="discussion-info">
+                    <h3>🐛 Bug report: Chat interface loading issues</h3>
+                    <p>5 replies • Last reply 3 days ago by @support</p>
+                  </div>
+                  <div className="discussion-stats">
+                    <span>🐛 Bug</span>
+                  </div>
+                </div>
+              </div>
+              <div className="discussion-actions">
+                <button className="btn btn-primary">💬 Start New Discussion</button>
+                <button className="btn btn-secondary" onClick={closeCommunityModal}>Browse All</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Share Project Modal */}
+      {showProjectModal && (
+        <div className="modal-overlay" onClick={closeCommunityModal}>
+          <div className="modal-content community-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>🎯 Share Your Project</h2>
+              <button className="modal-close" onClick={closeCommunityModal} aria-label="Close modal">✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="project-form">
+                <div className="form-group">
+                  <label>Project Name</label>
+                  <input type="text" placeholder="What did you build?" className="form-input" />
+                </div>
+                <div className="form-group">
+                  <label>Project Type</label>
+                  <select className="form-select">
+                    <option>Web Application</option>
+                    <option>Mobile App</option>
+                    <option>API/Backend</option>
+                    <option>AI Integration</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Tech Stack</label>
+                  <input type="text" placeholder="React, Node.js, Python, etc." className="form-input" />
+                </div>
+                <div className="form-group">
+                  <label>Description</label>
+                  <textarea rows="6" placeholder="Tell us about your project, what it does, and how AutoDevelop.ai helped you build it..." className="form-textarea"></textarea>
+                </div>
+                <div className="form-group">
+                  <label>Project URL (optional)</label>
+                  <input type="url" placeholder="https://your-project.com" className="form-input" />
+                </div>
+                <div className="form-actions">
+                  <button className="btn btn-secondary" onClick={closeCommunityModal}>Cancel</button>
+                  <button className="btn btn-primary">🚀 Share Project</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Blog Post Modal */}
       {showModal && selectedPost && (
