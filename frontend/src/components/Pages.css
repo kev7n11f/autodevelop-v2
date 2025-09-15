@@ -844,7 +844,7 @@
   padding: 0;
 }
 
-.read-more-btn:hover, .watch-btn:hover {
+.read-more-btn:not(:disabled):hover, .watch-btn:not(:disabled):hover {
   color: var(--primary-dark);
 }
 
