@@ -191,9 +191,8 @@ export default function TutorialVideos() {
                     <h3 className="tutorial-title">{tutorial.title}</h3>
                     <p className="tutorial-description">{tutorial.description}</p>
                     <button
-                      className={`watch-btn${tutorial.url ? '' : ' watch-btn--disabled'}`}
-                      onClick={tutorial.url ? () => window.open(tutorial.url, '_blank', 'noopener,noreferrer') : undefined}
-                      disabled={!tutorial.url}
+                      className="watch-btn"
+                      onClick={() => window.open(tutorial.url, '_blank', 'noopener,noreferrer')}
                     >
                       ▶️ Watch Now
                     </button>
