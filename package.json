@@ -11,7 +11,7 @@
     "lint": "npm --prefix frontend run lint",
     "test:auth": "node test-auth-subscription-flows.js",
     "setup:demo": "cp .env.demo .env && echo 'Demo environment copied to .env. Update with your real API keys for full functionality.'",
-    "validate:env": "node -e \"const {checkProductionReadiness} = require('./backend/utils/envValidator'); const result = checkProductionReadiness(); console.log(JSON.stringify(result, null, 2)); process.exit(result.ready ? 0 : 1);\""
+    "validate:env": "node -e \"require('dotenv').config(); const {validateEnvironmentVariables, logValidationResults} = require('./backend/utils/envValidator'); const env = process.env.NODE_ENV || 'development'; const result = validateEnvironmentVariables(env); logValidationResults(result); console.log('\\nFor production deployment, all environment variables must be set with real values.'); process.exit(result.isValid ? 0 : 1);\""
   },
   "dependencies": {
     "@kinde-oss/kinde-auth-nextjs": "^2.9.0",
