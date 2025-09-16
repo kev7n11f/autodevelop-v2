@@ -1,10 +1,49 @@
 import { checkSystemStatus } from './systemStatus';
 
+// Get user data from localStorage or return defaults for unauthenticated users
+const getUserDataForUpgrade = () => {
+  const userId = localStorage.getItem('userId');
+  const email = localStorage.getItem('userEmail');
+  const name = localStorage.getItem('userName');
+  
+  // If user is not authenticated (no data in localStorage), 
+  // redirect to login or show authentication required message
+  if (!userId || !email || !name) {
+    return {
+      isAuthenticated: false,
+      userId: null,
+      email: null,
+      name: null
+    };
+  }
+  
+  return {
+    isAuthenticated: true,
+    userId,
+    email,
+    name
+  };
+};
+
 // Shared utility for handling upgrade/checkout flow
 export const handleUpgrade = async () => {
-  const userId = localStorage.getItem('userId') || 'demo-user';
-  const email = localStorage.getItem('userEmail') || 'demo@autodevelop.ai';
-  const name = localStorage.getItem('userName') || 'Demo User';
+  const userData = getUserDataForUpgrade();
+  
+  // Check if user is authenticated
+  if (!userData.isAuthenticated) {
+    const shouldLogin = confirm(
+      'You need to be signed in to upgrade your subscription.\n\n' +
+      'Would you like to sign in now?'
+    );
+    
+    if (shouldLogin) {
+      // Redirect to login page
+      window.location.href = '/login';
+      return;
+    } else {
+      return; // User chose not to sign in
+    }
+  }
   
   // Check system status first to provide better user feedback
   const status = await checkSystemStatus();
@@ -20,9 +59,9 @@ export const handleUpgrade = async () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
-        userId, 
-        email, 
-        name,
+        userId: userData.userId, 
+        email: userData.email, 
+        name: userData.name,
         tierId: 'pro',
         billingCycle: 'monthly'
       })
