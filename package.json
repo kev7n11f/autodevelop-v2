@@ -8,7 +8,10 @@
     "start": "node api/index.js",
     "vercel-build": "npm install && cd frontend && npm install && npm run build",
     "preview": "npm --prefix frontend run preview",
-    "lint": "npm --prefix frontend run lint"
+    "lint": "npm --prefix frontend run lint",
+    "test:auth": "node test-auth-subscription-flows.js",
+    "setup:demo": "cp .env.demo .env && echo 'Demo environment copied to .env. Update with your real API keys for full functionality.'",
+    "validate:env": "node -e \"const {checkProductionReadiness} = require('./backend/utils/envValidator'); const result = checkProductionReadiness(); console.log(JSON.stringify(result, null, 2)); process.exit(result.ready ? 0 : 1);\""
   },
   "dependencies": {
     "@kinde-oss/kinde-auth-nextjs": "^2.9.0",

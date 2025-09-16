@@ -24,20 +24,45 @@ if (process.env.STRIPE_SECRET_KEY) {
 const validatePaymentData = (data) => {
   const { userId, email, amount, planType } = data;
   
-  if (!userId || typeof userId !== 'string') {
-    throw new Error('Invalid user ID');
+  if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
+    throw new Error('Invalid user ID - must be a non-empty string');
   }
   
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw new Error('Invalid email address');
+    throw new Error('Invalid email address format');
   }
   
-  if (!amount || isNaN(amount) || amount <= 0) {
-    throw new Error('Invalid amount');
+  if (amount !== undefined && (isNaN(amount) || amount <= 0)) {
+    throw new Error('Invalid amount - must be a positive number');
   }
   
-  if (!planType || !['basic', 'pro', 'enterprise'].includes(planType)) {
-    throw new Error('Invalid plan type');
+  if (planType && !['starter', 'pro', 'enterprise'].includes(planType)) {
+    throw new Error('Invalid plan type - must be starter, pro, or enterprise');
+  }
+};
+
+// Validate Stripe checkout request
+const validateCheckoutRequest = (data) => {
+  const { userId, email, name, tierId, billingCycle } = data;
+  
+  if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
+    throw new Error('userId is required and must be a non-empty string');
+  }
+  
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new Error('Valid email address is required');
+  }
+  
+  if (!name || typeof name !== 'string' || name.trim().length === 0) {
+    throw new Error('name is required and must be a non-empty string');
+  }
+  
+  if (tierId && !['starter', 'pro', 'enterprise'].includes(tierId)) {
+    throw new Error('tierId must be one of: starter, pro, enterprise');
+  }
+  
+  if (billingCycle && !['monthly', 'yearly'].includes(billingCycle)) {
+    throw new Error('billingCycle must be either monthly or yearly');
   }
 };
 
@@ -566,21 +591,27 @@ const getPricingTierDetails = async (req, res) => {
 const createStripeCheckoutSessionWithTier = async (req, res) => {
   try {
     if (!stripe) {
-      return res.status(500).json({ 
+      return res.status(503).json({ 
+        success: false,
         error: 'Stripe not configured',
-        message: 'Payment processing is not available in this environment' 
+        message: 'Payment processing is not available in this environment',
+        code: 'STRIPE_NOT_CONFIGURED'
+      });
+    }
+
+    // Validate request body
+    try {
+      validateCheckoutRequest(req.body);
+    } catch (validationError) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        details: validationError.message,
+        code: 'VALIDATION_ERROR'
       });
     }
 
     const { userId, email, name, tierId, billingCycle = 'monthly', priceId } = req.body;
-    
-    // Validate required fields
-    if (!userId || !email || !name) {
-      return res.status(400).json({ 
-        error: 'Missing required fields',
-        details: 'userId, email, and name are required' 
-      });
-    }
 
     let finalPriceId = priceId;
     let selectedTier = null;
@@ -589,30 +620,50 @@ const createStripeCheckoutSessionWithTier = async (req, res) => {
     if (tierId) {
       selectedTier = getPricingTier(tierId, true); // Include promotional pricing
       if (!selectedTier) {
-        return res.status(400).json({ 
-          error: 'Invalid tier',
-          details: `Pricing tier '${tierId}' not found` 
+        return res.status(404).json({ 
+          success: false,
+          error: 'Pricing tier not found',
+          details: `Pricing tier '${tierId}' does not exist`,
+          availableTiers: Object.keys(getAllPricingTiers()),
+          code: 'TIER_NOT_FOUND'
         });
       }
       
       finalPriceId = getStripePriceId(tierId, billingCycle);
       if (!finalPriceId) {
         return res.status(400).json({ 
-          error: 'Invalid billing cycle',
-          details: `Billing cycle '${billingCycle}' not available for tier '${tierId}'` 
+          success: false,
+          error: 'Price ID not configured',
+          details: `No Stripe price ID configured for tier '${tierId}' with billing cycle '${billingCycle}'`,
+          code: 'PRICE_ID_NOT_CONFIGURED'
         });
       }
     }
 
-    // Fallback to default price ID if none provided
+    // Fallback to environment default if no specific price ID
     if (!finalPriceId) {
-      finalPriceId = process.env.STRIPE_DEFAULT_PRICE_ID;
+      finalPriceId = process.env.STRIPE_PRO_PRICE_ID || process.env.STRIPE_DEFAULT_PRICE_ID;
       if (!finalPriceId) {
-        return res.status(400).json({ 
+        return res.status(500).json({ 
+          success: false,
           error: 'No price ID available',
-          details: 'No priceId, tierId, or STRIPE_DEFAULT_PRICE_ID configured' 
+          details: 'No priceId provided and no default price ID configured in environment',
+          code: 'NO_PRICE_ID_CONFIGURED'
         });
       }
+    }
+
+    // Validate URLs are configured
+    const successUrl = process.env.STRIPE_SUCCESS_URL;
+    const cancelUrl = process.env.STRIPE_CANCEL_URL;
+    
+    if (!successUrl || !cancelUrl) {
+      return res.status(500).json({
+        success: false,
+        error: 'Stripe URLs not configured',
+        details: 'STRIPE_SUCCESS_URL and STRIPE_CANCEL_URL must be set',
+        code: 'STRIPE_URLS_NOT_CONFIGURED'
+      });
     }
 
     // Create Stripe checkout session
@@ -625,34 +676,37 @@ const createStripeCheckoutSessionWithTier = async (req, res) => {
           quantity: 1
         }
       ],
-      success_url: (process.env.STRIPE_SUCCESS_URL || 'http://localhost:5173/success') + '?session_id={CHECKOUT_SESSION_ID}',
-      cancel_url: process.env.STRIPE_CANCEL_URL || 'http://localhost:5173/cancel',
+      success_url: successUrl + '?session_id={CHECKOUT_SESSION_ID}',
+      cancel_url: cancelUrl,
       metadata: {
-        userId,
-        name,
-        tierId: tierId || 'default',
+        userId: userId.trim(),
+        name: name.trim(),
+        tierId: tierId || 'pro',
         billingCycle: billingCycle || 'monthly'
       },
       subscription_data: {
         metadata: {
-          userId,
-          name,
-          tierId: tierId || 'default',
+          userId: userId.trim(),
+          name: name.trim(),
+          tierId: tierId || 'pro',
           billingCycle: billingCycle || 'monthly'
         }
       },
       allow_promotion_codes: true,
-      billing_address_collection: 'required'
+      billing_address_collection: 'required',
+      customer_creation: 'always',
+      payment_method_collection: 'if_required'
     };
 
     const session = await stripe.checkout.sessions.create(sessionParams);
     
-    logger.info('Stripe checkout session created', { 
+    logger.info('Stripe checkout session created successfully', { 
       sessionId: session.id, 
-      userId, 
-      tierId: tierId || 'default',
+      userId: userId.trim(), 
+      tierId: tierId || 'pro',
       billingCycle,
-      priceId: finalPriceId 
+      priceId: finalPriceId,
+      email: email
     });
 
     res.json({
@@ -664,18 +718,39 @@ const createStripeCheckoutSessionWithTier = async (req, res) => {
         name: selectedTier.name,
         price: billingCycle === 'yearly' ? selectedTier.priceYearly : selectedTier.priceMonthly,
         billingCycle
-      } : null
+      } : null,
+      priceId: finalPriceId
     });
   } catch (error) {
     logger.error('Error creating Stripe checkout session', { 
       error: error.message, 
+      stack: error.stack,
       userId: req.body.userId,
-      tierId: req.body.tierId
+      tierId: req.body.tierId,
+      stripeErrorType: error.type,
+      stripeErrorCode: error.code
     });
-    res.status(500).json({
+    
+    // Handle specific Stripe errors
+    let statusCode = 500;
+    let errorCode = 'CHECKOUT_CREATION_FAILED';
+    let userMessage = 'Failed to create checkout session';
+    
+    if (error.type === 'StripeInvalidRequestError') {
+      statusCode = 400;
+      errorCode = 'STRIPE_INVALID_REQUEST';
+      userMessage = 'Invalid request to payment processor';
+    } else if (error.type === 'StripeAuthenticationError') {
+      statusCode = 500;
+      errorCode = 'STRIPE_AUTH_ERROR';
+      userMessage = 'Payment processor authentication failed';
+    }
+    
+    res.status(statusCode).json({
       success: false,
-      error: 'Failed to create checkout session',
-      details: error.message
+      error: userMessage,
+      details: error.message,
+      code: errorCode
     });
   }
 };
