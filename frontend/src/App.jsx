@@ -5,7 +5,10 @@ import { SpeedInsights } from '@vercel/speed-insights/react';
 import { HelmetProvider } from 'react-helmet-async';
 import SEO from './components/SEO';
 import { AuthProvider } from './contexts/AuthContext';
-import BotUI from './components/BotUI';
+import Homepage from './components/Homepage';
+import Chat from './components/Chat';
+import Blog from './components/Blog';
+import TutorialVideos from './components/TutorialVideos';
 import About from './components/About';
 import Contact from './components/Contact';
 import Privacy from './components/Privacy';
@@ -27,11 +30,12 @@ function Navigation() {
   const { isAuthenticated, loading } = useAuth();
 
   const navItems = [
-    { path: '/', label: 'Chat', icon: '💬' },
+    { path: '/', label: 'Home', icon: '🏠' },
+    { path: '/chat', label: 'Chat', icon: '💬' },
+    { path: '/blog', label: 'Blog', icon: '📝' },
+    { path: '/tutorials', label: 'Tutorials', icon: '🎥' },
     { path: '/about', label: 'About', icon: '📖' },
     { path: '/contact', label: 'Contact', icon: '📧' },
-    { path: '/privacy', label: 'Privacy', icon: '🔒' },
-    { path: '/terms', label: 'Terms', icon: '📋' },
   ];
 
   return (
@@ -151,7 +155,16 @@ function AppContent() {
   let seoTitle = 'AutoDevelop.ai – AI-Powered Development Platform';
   let seoDesc = 'Transform your ideas into reality with AutoDevelop.ai. Use AI to build applications, websites, and tools step by step.';
 
-  if (location.pathname === '/about') {
+  if (location.pathname === '/chat') {
+    seoTitle = 'AI Chat Assistant – AutoDevelop.ai';
+    seoDesc = 'Chat with AutoDevelop.ai\'s AI assistant for development guidance, code help, and project support.';
+  } else if (location.pathname === '/blog') {
+    seoTitle = 'Community Blog – AutoDevelop.ai';
+    seoDesc = 'Join the AutoDevelop.ai community. Read tutorials, share projects, and engage in discussions about AI-powered development.';
+  } else if (location.pathname === '/tutorials') {
+    seoTitle = 'Tutorial Videos – AutoDevelop.ai';
+    seoDesc = 'Learn AutoDevelop.ai with our comprehensive video tutorials. From beginner guides to advanced techniques.';
+  } else if (location.pathname === '/about') {
     seoTitle = 'About – AutoDevelop.ai';
     seoDesc = 'Learn about AutoDevelop.ai and how our AI-powered platform helps developers and creators build amazing projects.';
   } else if (location.pathname === '/contact') {
@@ -203,7 +216,10 @@ function AppContent() {
         <div className="content-section">
           <div className="container">
             <Routes>
-              <Route path="/" element={<BotUI />} />
+              <Route path="/" element={<Homepage />} />
+              <Route path="/chat" element={<Chat />} />
+              <Route path="/blog" element={<Blog />} />
+              <Route path="/tutorials" element={<TutorialVideos />} />
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/privacy" element={<Privacy />} />
@@ -224,7 +240,13 @@ function AppContent() {
             <div className="footer-links">
               <div className="footer-column">
                 <h4>Product</h4>
+                <Link to="/chat">AI Chat</Link>
+                <Link to="/tutorials">Tutorials</Link>
                 <Link to="/about">About</Link>
+              </div>
+              <div className="footer-column">
+                <h4>Community</h4>
+                <Link to="/blog">Blog</Link>
                 <Link to="/contact">Contact</Link>
               </div>
               <div className="footer-column">
