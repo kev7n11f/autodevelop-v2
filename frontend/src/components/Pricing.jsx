@@ -27,9 +27,23 @@ const PricingPage = () => {
     setProcessingCheckout(tierId);
     
     try {
-      const userId = localStorage.getItem('userId') || 'demo-user';
-      const email = localStorage.getItem('userEmail') || 'demo@autodevelop.ai';
-      const name = localStorage.getItem('userName') || 'Demo User';
+      // Get user data from localStorage
+      const userId = localStorage.getItem('userId');
+      const email = localStorage.getItem('userEmail');
+      const name = localStorage.getItem('userName');
+      
+      // Check if user is authenticated
+      if (!userId || !email || !name) {
+        const shouldLogin = confirm(
+          'You need to be signed in to subscribe to a plan.\n\n' +
+          'Would you like to sign in now?'
+        );
+        
+        if (shouldLogin) {
+          window.location.href = '/login';
+        }
+        return;
+      }
 
       const checkoutData = await createCheckoutSession({
         userId,
