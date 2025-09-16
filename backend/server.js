@@ -9,6 +9,7 @@ const passport = require('./utils/passport');
 const apiRoutes = require('./routes/apiRoutes');
 const logger = require('./utils/logger');
 const database = require('./utils/database');
+const { validateEnvironmentVariables, logValidationResults } = require('./utils/envValidator');
 const { createSessionConfig } = require('./config/sessionStore');
 const { 
   basicRateLimit, 
@@ -174,11 +175,21 @@ app.get('/health', (_, res) => {
     email: process.env.SENDGRID_API_KEY ? 'available' : 'disabled (no API key)'
   };
   
+  // Add environment validation status
+  const envValidation = validateEnvironmentVariables(process.env.NODE_ENV || 'development');
+  healthStatus.environmentValidation = {
+    isValid: envValidation.isValid,
+    missing: envValidation.missing.length,
+    warnings: envValidation.warnings.length,
+    missingVariables: envValidation.missing.map(v => v.name)
+  };
+  
   // Add helpful setup message for development
-  if (!process.env.OPENAI_API_KEY || !process.env.STRIPE_SECRET_KEY || !process.env.SENDGRID_API_KEY) {
+  if (!envValidation.isValid) {
     healthStatus.setup = {
-      message: 'Some features are disabled due to missing API keys',
-      help: 'See GETTING_STARTED.md for configuration instructions',
+      message: 'Some required environment variables are missing',
+      help: 'See VERCEL_DEPLOYMENT_SETUP.md for configuration instructions',
+      missing: envValidation.missing.map(v => v.name),
       test: 'Run "node test-system.js" to see detailed status'
     };
   }
@@ -211,13 +222,21 @@ async function startServer() {
     timestamp: new Date().toISOString()
   });
   
-  // Validate critical environment variables
-  const criticalEnvVars = [];
-  const missingEnvVars = criticalEnvVars.filter(envVar => !process.env[envVar]);
+  // Validate environment variables
+  const envValidation = validateEnvironmentVariables(process.env.NODE_ENV || 'development');
+  logValidationResults(envValidation);
   
-  if (missingEnvVars.length > 0) {
-    logger.warn('Some environment variables are missing but using defaults:', { 
-      missing: missingEnvVars 
+  if (!envValidation.isValid && process.env.NODE_ENV === 'production') {
+    logger.error('❌ Production deployment requires all environment variables to be set');
+    logger.info('📋 Missing variables:', envValidation.missing.map(v => v.name));
+    logger.info('📖 See VERCEL_DEPLOYMENT_SETUP.md for configuration instructions');
+    
+    // In production, we should warn but not exit to allow health checks
+    serviceHealth.startupErrors.push({
+      service: 'environment',
+      error: 'Missing required environment variables',
+      missing: envValidation.missing.map(v => v.name),
+      timestamp: new Date().toISOString()
     });
   }
   
