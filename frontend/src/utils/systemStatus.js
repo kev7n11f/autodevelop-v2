@@ -1,16 +1,16 @@
 // System status utilities
 export const checkSystemStatus = async () => {
   try {
-    const response = await fetch('/health');
+    const response = await fetch('/api/health');
     const data = await response.json();
     
     // Determine service status from health endpoint and error messages
     return {
-      stripe: data.services?.stripe || false, // Will be false until configured
-      openai: data.services?.openai || false, // Will be false until configured  
-      sendgrid: data.services?.sendgrid || false, // Will be false until configured
+      stripe: data.environment?.hasStripe || false,
+      openai: data.environment?.hasOpenAI || false, 
+      sendgrid: data.environment?.hasSendGrid || false,
       database: data.services?.database === 'healthy',
-      server: data.services?.server === 'healthy'
+      server: data.status === 'healthy'
     };
   } catch (error) {
     console.error('Failed to check system status:', error);
