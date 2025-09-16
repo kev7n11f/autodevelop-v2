@@ -240,18 +240,41 @@ exports.register = async (req, res) => {
   try {
     const { email, password, name } = req.body;
 
-    // Validate input
+    // Validate input presence
     if (!email || !password || !name) {
       return res.status(400).json({ 
         error: 'Missing required fields',
-        details: 'Email, password, and name are required'
+        details: 'Email, password, and name are required',
+        code: 'MISSING_FIELDS'
       });
     }
 
-    // Validate email format
-    if (!validateEmail(email)) {
+    // Validate input types and basic format
+    if (typeof email !== 'string' || typeof password !== 'string' || typeof name !== 'string') {
+      return res.status(400).json({
+        error: 'Invalid field types',
+        details: 'Email, password, and name must be strings',
+        code: 'INVALID_TYPES'
+      });
+    }
+
+    // Trim and validate email format
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!validateEmail(trimmedEmail)) {
       return res.status(400).json({ 
-        error: 'Invalid email format'
+        error: 'Invalid email format',
+        details: 'Please provide a valid email address',
+        code: 'INVALID_EMAIL'
+      });
+    }
+
+    // Validate name length and content
+    const trimmedName = name.trim();
+    if (trimmedName.length < 2 || trimmedName.length > 100) {
+      return res.status(400).json({
+        error: 'Invalid name length',
+        details: 'Name must be between 2 and 100 characters',
+        code: 'INVALID_NAME_LENGTH'
       });
     }
 
@@ -260,16 +283,25 @@ exports.register = async (req, res) => {
     if (!passwordValidation.isValid) {
       return res.status(400).json({ 
         error: 'Password does not meet requirements',
-        details: passwordValidation.errors
+        details: passwordValidation.errors,
+        requirements: [
+          'At least 8 characters long',
+          'Contains uppercase letter',
+          'Contains lowercase letter', 
+          'Contains number',
+          'Contains special character'
+        ],
+        code: 'WEAK_PASSWORD'
       });
     }
 
     // Check if user already exists
-    const existingUser = await database.getUserByEmail(email);
+    const existingUser = await database.getUserByEmail(trimmedEmail);
     if (existingUser) {
       return res.status(409).json({ 
         error: 'Email already registered',
-        details: 'An account with this email already exists'
+        details: 'An account with this email already exists. Please sign in instead.',
+        code: 'EMAIL_EXISTS'
       });
     }
 
@@ -278,9 +310,9 @@ exports.register = async (req, res) => {
 
     // Create new user
     const userData = {
-      email,
+      email: trimmedEmail,
       password_hash: passwordHash,
-      name,
+      name: trimmedName,
       avatarUrl: null,
       locale: 'en',
       verifiedEmail: false
@@ -352,20 +384,41 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Validate input
+    // Validate input presence
     if (!email || !password) {
       return res.status(400).json({ 
         error: 'Missing credentials',
-        details: 'Email and password are required'
+        details: 'Email and password are required',
+        code: 'MISSING_CREDENTIALS'
+      });
+    }
+
+    // Validate input types
+    if (typeof email !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({
+        error: 'Invalid credential types',
+        details: 'Email and password must be strings',
+        code: 'INVALID_TYPES'
+      });
+    }
+
+    // Trim and normalize email
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!validateEmail(trimmedEmail)) {
+      return res.status(401).json({
+        error: 'Invalid credentials',
+        details: 'Please check your email and password',
+        code: 'INVALID_CREDENTIALS'
       });
     }
 
     // Get user by email
-    const user = await database.getUserByEmailForAuth(email);
+    const user = await database.getUserByEmailForAuth(trimmedEmail);
     if (!user) {
       return res.status(401).json({ 
         error: 'Invalid credentials',
-        details: 'Email or password is incorrect'
+        details: 'Please check your email and password',
+        code: 'INVALID_CREDENTIALS'
       });
     }
 
@@ -373,7 +426,8 @@ exports.login = async (req, res) => {
     if (!user.password_hash) {
       return res.status(401).json({ 
         error: 'Invalid login method',
-        details: 'This account uses a different login method'
+        details: 'This account uses a different login method. Please try signing in with Google.',
+        code: 'OAUTH_ACCOUNT'
       });
     }
 
@@ -382,7 +436,8 @@ exports.login = async (req, res) => {
     if (!isPasswordValid) {
       return res.status(401).json({ 
         error: 'Invalid credentials',
-        details: 'Email or password is incorrect'
+        details: 'Please check your email and password',
+        code: 'INVALID_CREDENTIALS'
       });
     }
 
