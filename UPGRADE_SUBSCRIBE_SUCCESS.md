@@ -42,9 +42,9 @@ GET  /api/stripe/debug/prices        - Debug Stripe configuration
 ```
 
 ### **Stripe Price IDs Configured:**
-- **Starter**: `price_1Rh6KIFqLK5Bra1AWQ9fYf0q` ($9.00)
-- **Pro**: `price_1Rh6KIFqLK5Bra1AWQ9fYf0q` ($9.00) 
-- **Enterprise**: `price_1S3vP1FqLK5Bra1AKmY9wSoi` ($249.99)
+- **Starter**: price_test1Rh6KIFqLK5Bra1AWQ9
+- **Pro**: price_test1Rh6KIFqLK5Bra1AWQ9 
+- **Enterprise**: price_test1S3vP1FqLK5Bra1AKm
 
 ### **Environment Variables:**
 - Updated `.env` with correct Stripe price IDs
