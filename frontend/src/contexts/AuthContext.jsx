@@ -34,10 +34,27 @@ export const AuthProvider = ({ children }) => {
         const authStatus = await AuthService.checkAuthStatus();
         setIsAuthenticated(authStatus.authenticated);
         setUser(authStatus.user);
+        
+        // Update localStorage if user is authenticated
+        if (authStatus.authenticated && authStatus.user) {
+          localStorage.setItem('userId', authStatus.user.id.toString());
+          localStorage.setItem('userEmail', authStatus.user.email);
+          localStorage.setItem('userName', authStatus.user.name);
+        } else {
+          // Clear localStorage if not authenticated
+          localStorage.removeItem('userId');
+          localStorage.removeItem('userEmail');
+          localStorage.removeItem('userName');
+        }
       } catch (error) {
         console.error('Error initializing auth:', error);
         setIsAuthenticated(false);
         setUser(null);
+        
+        // Clear localStorage on error
+        localStorage.removeItem('userId');
+        localStorage.removeItem('userEmail');
+        localStorage.removeItem('userName');
       } finally {
         setLoading(false);
       }
@@ -49,6 +66,17 @@ export const AuthProvider = ({ children }) => {
     const handleAuthChange = (authenticated, userData) => {
       setIsAuthenticated(authenticated);
       setUser(userData);
+      
+      // Sync localStorage with auth state changes
+      if (authenticated && userData) {
+        localStorage.setItem('userId', userData.id.toString());
+        localStorage.setItem('userEmail', userData.email);
+        localStorage.setItem('userName', userData.name);
+      } else {
+        localStorage.removeItem('userId');
+        localStorage.removeItem('userEmail');
+        localStorage.removeItem('userName');
+      }
     };
 
     AuthService.addAuthListener(handleAuthChange);
@@ -84,11 +112,30 @@ export const AuthProvider = ({ children }) => {
       const authStatus = await AuthService.checkAuthStatus();
       setIsAuthenticated(authStatus.authenticated);
       setUser(authStatus.user);
+      
+      // Update localStorage if user is authenticated
+      if (authStatus.authenticated && authStatus.user) {
+        localStorage.setItem('userId', authStatus.user.id.toString());
+        localStorage.setItem('userEmail', authStatus.user.email);
+        localStorage.setItem('userName', authStatus.user.name);
+      } else {
+        // Clear localStorage if not authenticated
+        localStorage.removeItem('userId');
+        localStorage.removeItem('userEmail');
+        localStorage.removeItem('userName');
+      }
+      
       return authStatus;
     } catch (error) {
       console.error('Error refreshing auth:', error);
       setIsAuthenticated(false);
       setUser(null);
+      
+      // Clear localStorage on error
+      localStorage.removeItem('userId');
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('userName');
+      
       return { authenticated: false, user: null };
     }
   };
@@ -100,6 +147,11 @@ export const AuthProvider = ({ children }) => {
       if (result.success) {
         setIsAuthenticated(true);
         setUser(result.user);
+        
+        // Store user data in localStorage for subscription/upgrade flows
+        localStorage.setItem('userId', result.user.id.toString());
+        localStorage.setItem('userEmail', result.user.email);
+        localStorage.setItem('userName', result.user.name);
       }
       return result;
     } catch (error) {
@@ -119,6 +171,11 @@ export const AuthProvider = ({ children }) => {
       if (result.success) {
         setIsAuthenticated(true);
         setUser(result.user);
+        
+        // Store user data in localStorage for subscription/upgrade flows
+        localStorage.setItem('userId', result.user.id.toString());
+        localStorage.setItem('userEmail', result.user.email);
+        localStorage.setItem('userName', result.user.name);
       }
       return result;
     } catch (error) {
@@ -153,6 +210,11 @@ export const AuthProvider = ({ children }) => {
       if (success) {
         setIsAuthenticated(false);
         setUser(null);
+        
+        // Clear user data from localStorage
+        localStorage.removeItem('userId');
+        localStorage.removeItem('userEmail');
+        localStorage.removeItem('userName');
       }
       return success;
     } catch (error) {
