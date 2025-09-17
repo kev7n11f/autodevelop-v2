@@ -454,5 +454,68 @@ app.get('/api/stripe/debug/prices', async (req, res) => {
   }
 });
 
+// Stripe webhook endpoint for processing subscription events
+app.post('/api/payments/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  try {
+    if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_WEBHOOK_SECRET) {
+      console.warn('Stripe webhook received but Stripe not configured');
+      return res.status(400).json({ error: 'Stripe not configured' });
+    }
+
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    const sig = req.headers['stripe-signature'];
+    let event;
+
+    try {
+      event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    } catch (err) {
+      console.error('Webhook signature verification failed:', err.message);
+      return res.status(400).json({ error: 'Invalid signature' });
+    }
+
+    console.log('Stripe webhook event received:', { type: event.type, id: event.id });
+
+    // Handle the event
+    switch (event.type) {
+      case 'checkout.session.completed':
+        const session = event.data.object;
+        console.log('Checkout session completed:', {
+          sessionId: session.id,
+          customerId: session.customer,
+          metadata: session.metadata
+        });
+        // Here you would typically update your database
+        break;
+        
+      case 'invoice.payment_succeeded':
+        const invoice = event.data.object;
+        console.log('Payment succeeded:', {
+          invoiceId: invoice.id,
+          customerId: invoice.customer,
+          amountPaid: invoice.amount_paid
+        });
+        break;
+        
+      case 'customer.subscription.updated':
+      case 'customer.subscription.deleted':
+        const subscription = event.data.object;
+        console.log('Subscription updated/deleted:', {
+          subscriptionId: subscription.id,
+          customerId: subscription.customer,
+          status: subscription.status
+        });
+        break;
+        
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
+    }
+
+    res.json({ received: true });
+  } catch (error) {
+    console.error('Error handling Stripe webhook:', error);
+    res.status(500).json({ error: 'Webhook processing failed' });
+  }
+});
+
 // Export for Vercel
 module.exports = app;
