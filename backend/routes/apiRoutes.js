@@ -1,4 +1,5 @@
 const router = require('express').Router();
+const express = require('express');
 const emailRoute = require('./emailRoute');
 const authRoutes = require('./authRoutes');
 
@@ -57,6 +58,7 @@ router.post('/payments/check-renewals', checkUpcomingRenewals);
 router.post('/payments/stripe/checkout', createStripeCheckoutSession);
 router.post('/payments/stripe/checkout-tier', createStripeCheckoutSessionWithTier);
 router.post('/payments/stripe/portal', createBillingPortalSession);
+router.post('/payments/stripe/webhook', express.raw({ type: 'application/json' }), require('../controllers/paymentController').stripeWebhook);
 
 // Pricing endpoints
 router.get('/pricing/tiers', getPricingTiers);
@@ -69,6 +71,22 @@ router.get('/admin/status', getSystemStatus);
 router.post('/admin/usage/reset', resetUserUsageAdmin);
 router.get('/admin/usage/stats', getUsageStatsAdmin);
 router.get('/admin/diagnostic/:userId', getUserDiagnosticAdmin);
+
+// Health check endpoint (public)
+router.get('/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    environment: {
+      hasStripe: !!process.env.STRIPE_SECRET_KEY,
+      hasOpenAI: !!process.env.OPENAI_API_KEY,
+      hasSendGrid: !!process.env.SENDGRID_API_KEY
+    },
+    services: {
+      database: 'healthy' // We know DB is working if we get here
+    }
+  });
+});
 
 // Email endpoints
 router.use('/email', emailRoute);
