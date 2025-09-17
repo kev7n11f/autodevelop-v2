@@ -66,7 +66,7 @@ class Database {
         user_id TEXT NOT NULL,
         email TEXT NOT NULL,
         name TEXT NOT NULL,
-        plan_type TEXT NOT NULL CHECK(plan_type IN ('basic', 'pro', 'enterprise')),
+        plan_type TEXT NOT NULL CHECK(plan_type IN ('starter', 'pro', 'enterprise')),
         status TEXT DEFAULT 'active' CHECK(status IN ('active', 'cancelled', 'expired', 'trial')),
         current_period_start DATETIME NOT NULL,
         current_period_end DATETIME NOT NULL,
