@@ -667,6 +667,9 @@ const createStripeCheckoutSessionWithTier = async (req, res) => {
     }
 
     // Create Stripe checkout session
+    // Build session params for Stripe Checkout. Note: `customer_creation` may only
+    // be used with `mode: 'payment'` according to Stripe's API. For subscription
+    // mode we omit `customer_creation` to avoid invalid-request errors.
     const sessionParams = {
       mode: 'subscription',
       customer_email: email,
@@ -694,7 +697,6 @@ const createStripeCheckoutSessionWithTier = async (req, res) => {
       },
       allow_promotion_codes: true,
       billing_address_collection: 'required',
-      customer_creation: 'always',
       payment_method_collection: 'if_required'
     };
 
