@@ -11,7 +11,7 @@
   backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border-light);
   position: sticky;
-  top: 0;
+  top: var(--notification-height, 0px);
   z-index: 100;
   transition: all var(--transition-base);
 }
