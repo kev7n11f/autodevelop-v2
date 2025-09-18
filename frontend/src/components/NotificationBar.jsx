@@ -9,14 +9,30 @@ const NotificationBar = () => {
 
   // Update CSS custom property for navigation positioning
   useEffect(() => {
-    if (containerRef.current && isVisible && notifications.length > 0) {
-      const height = containerRef.current.offsetHeight;
-      document.documentElement.style.setProperty('--notification-height', `${height}px`);
-    } else {
+    if (!containerRef.current || !isVisible || notifications.length === 0) {
       document.documentElement.style.setProperty('--notification-height', '0px');
+      return;
     }
-  }, [notifications, isVisible]);
 
+    // Set initial height
+    document.documentElement.style.setProperty('--notification-height', `${containerRef.current.offsetHeight}px`);
+
+    // Create ResizeObserver to update height on size changes
+    const observer = new window.ResizeObserver(entries => {
+      for (let entry of entries) {
+        if (entry.target === containerRef.current) {
+          document.documentElement.style.setProperty('--notification-height', `${entry.target.offsetHeight}px`);
+        }
+      }
+    });
+    observer.observe(containerRef.current);
+
+    // Cleanup
+    return () => {
+      observer.disconnect();
+      document.documentElement.style.setProperty('--notification-height', '0px');
+    };
+  }, [isVisible, notifications.length]);
   useEffect(() => {
     // Check for notifications on component mount
     const checkNotifications = () => {
