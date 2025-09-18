@@ -4,7 +4,8 @@ const cors = require('cors');
 const compression = require('compression');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
-const session = require('express-session');
+// Sessions are no longer required for stateless JWT auth. Keep imports for reference.
+// const session = require('express-session');
 const passport = require('./utils/passport');
 const apiRoutes = require('./routes/apiRoutes');
 const logger = require('./utils/logger');
@@ -100,17 +101,9 @@ app.post('/stripe/webhook', express.raw({ type: 'application/json' }), stripeWeb
 app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 
-// Session configuration for OAuth state management
-// Uses modular session store (SQLite by default, easily swappable)
-// See backend/config/sessionStore.js for configuration and store swapping instructions
-const sessionConfig = createSessionConfig({
-  // Override default TTL to maintain 10 minutes for OAuth flow
-  options: {
-    ttl: 10 * 60 * 1000 // 10 minutes (just for OAuth flow)
-  }
-});
-
-app.use(session(sessionConfig));
+// Stateless JWT auth in production. If OAuth flows requiring server-side state
+// are used, consider enabling a session store (Redis) or storing OAuth state
+// in a short-lived persistent store. For now, we rely on JWTs and cookies.
 
 // Initialize Passport.js
 app.use(passport.initialize());
