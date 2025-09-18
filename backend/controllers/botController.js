@@ -2,7 +2,7 @@ const OpenAI = require('openai');
 const logger = require('../utils/logger');
 const { abuseDetection, chatRateLimit } = require('../middleware/security');
 const database = require('../utils/database');
-const FREE_LIMIT = parseInt(process.env.FREE_MESSAGE_LIMIT || '5', 10);
+const FREE_LIMIT = parseInt(process.env.FREE_MESSAGE_LIMIT || '20', 10);
 const FREE_MONTHLY_LIMIT = parseInt(process.env.FREE_MONTHLY_LIMIT || '150', 10);
 
 // in-memory usage delta cache (batch flush)
@@ -115,8 +115,10 @@ exports.chat = [
             error: 'Free limit reached',
             remaining: 0,
             upgrade: true,
-            message: `You have reached the free ${currentDailyUsed >= FREE_LIMIT ? 'daily' : 'monthly'} limit (${FREE_LIMIT}/day, ${FREE_MONTHLY_LIMIT}/month). Please upgrade to continue.`,
-            checkoutEndpoint: '/api/payments/stripe/checkout'
+            // Provide a clearer call-to-action and include the checkout endpoint for the frontend to link to
+            message: `You have reached the free ${currentDailyUsed >= FREE_LIMIT ? 'daily' : 'monthly'} limit (${FREE_LIMIT}/day, ${FREE_MONTHLY_LIMIT}/month). Upgrade to Pro to continue using the chat. Visit /pricing or call the checkout endpoint to subscribe.`,
+            checkoutEndpoint: '/api/payments/stripe/checkout',
+            pricingPage: '/pricing'
           });
         }
         // Use batched increment (memory) instead of immediate DB write

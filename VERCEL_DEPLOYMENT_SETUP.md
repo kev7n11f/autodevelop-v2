@@ -83,7 +83,7 @@ FROM_EMAIL=noreply@yourdomain.com
 ```
 NODE_ENV=production
 LOG_LEVEL=info
-FREE_MESSAGE_LIMIT=5
+FREE_MESSAGE_LIMIT=20
 FREE_MONTHLY_LIMIT=150
 ```
 
