@@ -10,6 +10,7 @@ const passport = require('./utils/passport');
 const apiRoutes = require('./routes/apiRoutes');
 const logger = require('./utils/logger');
 const database = require('./utils/database');
+const { runMigrations } = require('./utils/migrations');
 const { validateEnvironmentVariables, logValidationResults } = require('./utils/envValidator');
 const { createSessionConfig } = require('./config/sessionStore');
 const { 
@@ -38,6 +39,13 @@ const serviceHealth = {
 async function initializeDatabase() {
   try {
     await database.connect();
+    // Run deterministic, idempotent migrations immediately after connect
+    try {
+      await runMigrations();
+    } catch (mErr) {
+      logger.warn('Migrations encountered an error; continuing startup (migration retry path still available)', { error: mErr.message });
+      serviceHealth.startupErrors.push({ service: 'migrations', error: mErr.message, timestamp: new Date().toISOString() });
+    }
     logger.info('Database initialized successfully');
     serviceHealth.database = true;
     return true;
