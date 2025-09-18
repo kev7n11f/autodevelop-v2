@@ -1,6 +1,13 @@
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const dynamodb = require('../utils/dynamodb');
 const logger = require('../../backend/utils/logger');
+const dynamodb = require('../utils/dynamodb');
+
+// Initialize Stripe only if API key is available
+let stripe = null;
+if (process.env.STRIPE_SECRET_KEY) {
+  stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+} else {
+  console.warn('Stripe API key not configured. Payment functionality will be limited.');
+}
 
 // Pricing tiers configuration
 const PRICING_TIERS = {
@@ -77,8 +84,12 @@ class StripeService {
 
   // Create Stripe customer
   async createCustomer(userData) {
+    if (!stripe) {
+      throw new Error('Stripe not configured - cannot create customer');
+    }
+    
     try {
-      const customer = await this.stripe.customers.create({
+      const customer = await stripe.customers.create({
         email: userData.email,
         name: userData.name,
         metadata: {
@@ -101,6 +112,10 @@ class StripeService {
 
   // Create checkout session
   async createCheckoutSession(sessionData) {
+    if (!stripe) {
+      throw new Error('Stripe not configured - cannot create checkout session');
+    }
+    
     try {
       const { userId, email, name, tierId, billingCycle = 'monthly' } = sessionData;
 
@@ -117,7 +132,7 @@ class StripeService {
       }
 
       // Create checkout session
-      const session = await this.stripe.checkout.sessions.create({
+      const session = await stripe.checkout.sessions.create({
         mode: 'subscription',
         customer_email: email,
         line_items: [
@@ -181,8 +196,8 @@ class StripeService {
       }
 
       // Retrieve subscription details
-      const subscription = await this.stripe.subscriptions.retrieve(session.subscription);
-      const customer = await this.stripe.customers.retrieve(session.customer);
+      const subscription = await stripe.subscriptions.retrieve(session.subscription);
+      const customer = await stripe.customers.retrieve(session.customer);
 
       // Save subscription to database
       await dynamodb.createSubscription({
@@ -254,7 +269,7 @@ class StripeService {
   async handleInvoicePayment(invoice) {
     try {
       if (invoice.subscription) {
-        const subscription = await this.stripe.subscriptions.retrieve(invoice.subscription);
+        const subscription = await stripe.subscriptions.retrieve(invoice.subscription);
         await this.handleSubscriptionUpdate(subscription);
       }
 
@@ -273,8 +288,12 @@ class StripeService {
 
   // Create billing portal session
   async createBillingPortalSession(customerId, returnUrl) {
+    if (!stripe) {
+      throw new Error('Stripe not configured - cannot create billing portal session');
+    }
+    
     try {
-      const session = await this.stripe.billingPortal.sessions.create({
+      const session = await stripe.billingPortal.sessions.create({
         customer: customerId,
         return_url: returnUrl || `${process.env.FRONTEND_URL || 'https://autodevelop-v2.vercel.app'}/account`
       });
@@ -288,8 +307,12 @@ class StripeService {
 
   // Get customer subscription
   async getCustomerSubscription(customerId) {
+    if (!stripe) {
+      throw new Error('Stripe not configured - cannot get customer subscription');
+    }
+    
     try {
-      const subscriptions = await this.stripe.subscriptions.list({
+      const subscriptions = await stripe.subscriptions.list({
         customer: customerId,
         status: 'all',
         limit: 1
@@ -304,8 +327,12 @@ class StripeService {
 
   // Cancel subscription
   async cancelSubscription(subscriptionId, cancelAtPeriodEnd = true) {
+    if (!stripe) {
+      throw new Error('Stripe not configured - cannot cancel subscription');
+    }
+    
     try {
-      const subscription = await this.stripe.subscriptions.update(subscriptionId, {
+      const subscription = await stripe.subscriptions.update(subscriptionId, {
         cancel_at_period_end: cancelAtPeriodEnd
       });
 
@@ -333,8 +360,12 @@ class StripeService {
 
   // Verify webhook signature
   verifyWebhookSignature(payload, signature, secret) {
+    if (!stripe) {
+      return { valid: false, error: 'Stripe not configured' };
+    }
+    
     try {
-      const event = this.stripe.webhooks.constructEvent(payload, signature, secret);
+      const event = stripe.webhooks.constructEvent(payload, signature, secret);
       return { valid: true, event };
     } catch (error) {
       logger.error('Webhook signature verification failed:', error);
