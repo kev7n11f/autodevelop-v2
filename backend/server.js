@@ -77,12 +77,23 @@ app.use(helmet({
   }
 }));
 app.use(compression());
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+// Configure CORS: in development allow any origin (helps with Vite using different ports),
+// in production lock down to FRONTEND_URL for security.
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+const corsOptions = process.env.NODE_ENV === 'production' ? {
+  origin: frontendUrl,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key']
-}));
+} : {
+  // In development allow the dev server (and other local ports) to access APIs
+  origin: true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key']
+};
+
+app.use(cors(corsOptions));
 
 // Stripe webhook needs raw body BEFORE express.json
 app.post('/stripe/webhook', express.raw({ type: 'application/json' }), stripeWebhook);
