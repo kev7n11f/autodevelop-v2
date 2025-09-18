@@ -1012,22 +1012,44 @@ class Database {
       INSERT INTO users (google_id, email, password_hash, name, avatar_url, locale, verified_email)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
-
-    return new Promise((resolve, reject) => {
-      this.db.run(insertSQL, [null, email, password_hash, name, avatarUrl, locale, verifiedEmail], function(err) {
-        if (err) {
-          if (err.code === 'SQLITE_CONSTRAINT' && err.message.includes('UNIQUE constraint')) {
-            reject(new Error('Email already registered'));
-          } else {
-            logger.error('Error creating user with password:', err);
-            reject(err);
+    // Helper to perform the insert; returns a promise
+    const runInsert = () => {
+      return new Promise((resolve, reject) => {
+        this.db.run(insertSQL, [null, email, password_hash, name, avatarUrl, locale, verifiedEmail], function(err) {
+          if (err) {
+            if (err.code === 'SQLITE_CONSTRAINT' && err.message.includes('UNIQUE constraint')) {
+              return reject(new Error('Email already registered'));
+            }
+            return reject(err);
           }
-        } else {
-          logger.info(`User created with password authentication: ${email}`);
-          resolve({ id: this.lastID, ...userData });
-        }
+          return resolve({ id: this.lastID, ...userData });
+        });
       });
-    });
+    };
+
+    try {
+      const result = await runInsert();
+      logger.info(`User created with password authentication: ${email}`);
+      return result;
+    } catch (err) {
+      // If the failure is due to a legacy schema where google_id is NOT NULL,
+      // attempt to migrate the users table to allow NULL google_id and retry once.
+      if (err && err.message && err.message.includes('NOT NULL constraint failed: users.google_id')) {
+        logger.warn('Detected NOT NULL constraint on users.google_id during createUserWithPassword - attempting migration and retry', { error: err.message });
+        try {
+          await this.migrateUsersTableForCustomAuth();
+          const retryResult = await runInsert();
+          logger.info(`User created after migration with password authentication: ${email}`);
+          return retryResult;
+        } catch (retryErr) {
+          logger.error('Retry after migration failed creating user with password:', retryErr);
+          throw retryErr;
+        }
+      }
+
+      logger.error('Error creating user with password:', err);
+      throw err;
+    }
   }
 
   async getUserByEmailForAuth(email) {
@@ -1067,29 +1089,33 @@ class Database {
       INSERT INTO user_sessions (user_id, session_token, refresh_token, expires_at, ip_address, user_agent)
       VALUES (?, ?, ?, ?, ?, ?)
     `;
+    // Ensure sessionToken is non-null to satisfy NOT NULL constraint in schema
+    const safeSessionToken = sessionToken || this.generateToken();
 
     return new Promise((resolve, reject) => {
-      this.db.run(insertSQL, [userId, sessionToken, refreshToken, expiresAt, ipAddress, userAgent], function(err) {
+      this.db.run(insertSQL, [userId, safeSessionToken, refreshToken, expiresAt, ipAddress, userAgent], function(err) {
         if (err) {
           logger.error('Error creating user session:', err);
           reject(err);
         } else {
-          resolve({ id: this.lastID, ...sessionData });
+          resolve({ id: this.lastID, userId, sessionToken: safeSessionToken, refreshToken, expiresAt, ipAddress, userAgent });
         }
       });
     });
   }
 
   async getUserSession(sessionToken) {
+    // Allow lookup by either session_token (access token) OR refresh_token
     const selectSQL = `
       SELECT us.*, u.email, u.name, u.google_id, u.avatar_url, u.locale, u.verified_email, u.created_at, u.last_login_at
       FROM user_sessions us
       JOIN users u ON us.user_id = u.id
-      WHERE us.session_token = ? AND us.expires_at > CURRENT_TIMESTAMP
+      WHERE (us.session_token = ? OR us.refresh_token = ?) AND us.expires_at > CURRENT_TIMESTAMP
+      LIMIT 1
     `;
 
     return new Promise((resolve, reject) => {
-      this.db.get(selectSQL, [sessionToken], (err, row) => {
+      this.db.get(selectSQL, [sessionToken, sessionToken], (err, row) => {
         if (err) {
           logger.error('Error getting user session:', err);
           reject(err);

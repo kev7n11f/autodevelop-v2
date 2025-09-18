@@ -58,7 +58,7 @@ FRONTEND_URL=https://yourdomain.com
 ### ⚙️ Optional Configuration
 ```bash
 # Usage Limits
-FREE_MESSAGE_LIMIT=5
+FREE_MESSAGE_LIMIT=20
 FREE_MONTHLY_LIMIT=150
 
 # Admin Access

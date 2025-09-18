@@ -1,0 +1,40 @@
+name: Build and Force Deploy to Vercel
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build-and-deploy:
+    name: Build and Force Deploy
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install repository dependencies
+        run: |
+          npm ci
+          npm --prefix frontend ci
+
+      - name: Run tests
+        run: |
+          node test-auth-subscription-flows.js
+          node tests/jwt.test.js
+
+      - name: Build frontend
+        run: npm --prefix frontend run build
+
+      - name: Force deploy to Vercel
+        run: |
+          # Use --force to bypass Vercel's server-side cache/reuse behavior
+          npx vercel --prod --token "$VERCEL_TOKEN" --confirm --force
+
+      - name: Post-deploy note
+        run: echo "If the deploy succeeded, run ./DEPLOYMENT_SMOKE_TEST.ps1 -BaseUrl 'https://www.autodevelop.ai' to validate production."

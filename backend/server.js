@@ -4,11 +4,13 @@ const cors = require('cors');
 const compression = require('compression');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
-const session = require('express-session');
+// Sessions are no longer required for stateless JWT auth. Keep imports for reference.
+// const session = require('express-session');
 const passport = require('./utils/passport');
 const apiRoutes = require('./routes/apiRoutes');
 const logger = require('./utils/logger');
 const database = require('./utils/database');
+const { runMigrations } = require('./utils/migrations');
 const { validateEnvironmentVariables, logValidationResults } = require('./utils/envValidator');
 const { createSessionConfig } = require('./config/sessionStore');
 const { 
@@ -37,6 +39,13 @@ const serviceHealth = {
 async function initializeDatabase() {
   try {
     await database.connect();
+    // Run deterministic, idempotent migrations immediately after connect
+    try {
+      await runMigrations();
+    } catch (mErr) {
+      logger.warn('Migrations encountered an error; continuing startup (migration retry path still available)', { error: mErr.message });
+      serviceHealth.startupErrors.push({ service: 'migrations', error: mErr.message, timestamp: new Date().toISOString() });
+    }
     logger.info('Database initialized successfully');
     serviceHealth.database = true;
     return true;
@@ -100,17 +109,9 @@ app.post('/stripe/webhook', express.raw({ type: 'application/json' }), stripeWeb
 app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 
-// Session configuration for OAuth state management
-// Uses modular session store (SQLite by default, easily swappable)
-// See backend/config/sessionStore.js for configuration and store swapping instructions
-const sessionConfig = createSessionConfig({
-  // Override default TTL to maintain 10 minutes for OAuth flow
-  options: {
-    ttl: 10 * 60 * 1000 // 10 minutes (just for OAuth flow)
-  }
-});
-
-app.use(session(sessionConfig));
+// Stateless JWT auth in production. If OAuth flows requiring server-side state
+// are used, consider enabling a session store (Redis) or storing OAuth state
+// in a short-lived persistent store. For now, we rely on JWTs and cookies.
 
 // Initialize Passport.js
 app.use(passport.initialize());
