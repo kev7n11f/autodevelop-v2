@@ -1,0 +1,154 @@
+service: autodevelop-v2-serverless
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-1'}
+  
+  environment:
+    STAGE: ${self:provider.stage}
+    JWT_SECRET: ${env:JWT_SECRET}
+    STRIPE_SECRET_KEY: ${env:STRIPE_SECRET_KEY}
+    STRIPE_WEBHOOK_SECRET: ${env:STRIPE_WEBHOOK_SECRET}
+    OPENAI_API_KEY: ${env:OPENAI_API_KEY}
+    DYNAMODB_TABLE_USERS: ${self:service}-${self:provider.stage}-users
+    DYNAMODB_TABLE_SESSIONS: ${self:service}-${self:provider.stage}-sessions
+    DYNAMODB_TABLE_SUBSCRIPTIONS: ${self:service}-${self:provider.stage}-subscriptions
+    
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource:
+            - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_USERS}"
+            - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_SESSIONS}"
+            - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_SUBSCRIPTIONS}"
+
+functions:
+  # Authentication endpoints
+  auth:
+    handler: src/functions/auth.handler
+    events:
+      - http:
+          path: /auth/{proxy+}
+          method: ANY
+          cors: true
+          
+  # Stripe webhook handler
+  stripeWebhook:
+    handler: src/functions/stripe-webhook.handler
+    events:
+      - http:
+          path: /payments/stripe/webhook
+          method: POST
+          cors: false
+          
+  # Stripe payment endpoints  
+  payments:
+    handler: src/functions/payments.handler
+    events:
+      - http:
+          path: /payments/{proxy+}
+          method: ANY
+          cors: true
+          
+  # Protected API endpoints
+  api:
+    handler: src/functions/api.handler
+    events:
+      - http:
+          path: /api/{proxy+}
+          method: ANY
+          cors: true
+
+resources:
+  Resources:
+    # Users table
+    UsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_TABLE_USERS}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: email
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: EmailIndex
+            KeySchema:
+              - AttributeName: email
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+            BillingMode: PAY_PER_REQUEST
+        BillingMode: PAY_PER_REQUEST
+        
+    # Sessions table
+    SessionsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_TABLE_SESSIONS}
+        AttributeDefinitions:
+          - AttributeName: sessionId
+            AttributeType: S
+          - AttributeName: userId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: sessionId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: UserIdIndex
+            KeySchema:
+              - AttributeName: userId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+            BillingMode: PAY_PER_REQUEST
+        BillingMode: PAY_PER_REQUEST
+        TimeToLiveSpecification:
+          AttributeName: expiresAt
+          Enabled: true
+          
+    # Subscriptions table
+    SubscriptionsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_TABLE_SUBSCRIPTIONS}
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+          - AttributeName: stripeCustomerId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: StripeCustomerIndex
+            KeySchema:
+              - AttributeName: stripeCustomerId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+            BillingMode: PAY_PER_REQUEST
+        BillingMode: PAY_PER_REQUEST
+
+plugins:
+  - serverless-offline
+
+custom:
+  serverless-offline:
+    httpPort: 3001
+    lambdaPort: 3002

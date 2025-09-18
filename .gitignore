@@ -60,3 +60,11 @@ coverage/
 # Test environment
 .env.test
 .vercel
+
+# Serverless
+.serverless/
+.serverless_plugins/
+
+# AWS
+.aws/
+aws-credentials.*
