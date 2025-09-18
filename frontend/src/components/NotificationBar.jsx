@@ -1,11 +1,38 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import NotificationService from '../services/NotificationService';
 import './NotificationBar.css';
 
 const NotificationBar = () => {
   const [notifications, setNotifications] = useState([]);
   const [isVisible, setIsVisible] = useState(false);
+  const containerRef = useRef(null);
 
+  // Update CSS custom property for navigation positioning
+  useEffect(() => {
+    if (!containerRef.current || !isVisible || notifications.length === 0) {
+      document.documentElement.style.setProperty('--notification-height', '0px');
+      return;
+    }
+
+    // Set initial height
+    document.documentElement.style.setProperty('--notification-height', `${containerRef.current.offsetHeight}px`);
+
+    // Create ResizeObserver to update height on size changes
+    const observer = new window.ResizeObserver(entries => {
+      for (let entry of entries) {
+        if (entry.target === containerRef.current) {
+          document.documentElement.style.setProperty('--notification-height', `${entry.target.offsetHeight}px`);
+        }
+      }
+    });
+    observer.observe(containerRef.current);
+
+    // Cleanup
+    return () => {
+      observer.disconnect();
+      document.documentElement.style.setProperty('--notification-height', '0px');
+    };
+  }, [isVisible, notifications.length]);
   useEffect(() => {
     // Check for notifications on component mount
     const checkNotifications = () => {
@@ -84,7 +111,7 @@ const NotificationBar = () => {
   }
 
   return (
-    <div className="notification-container">
+    <div className="notification-container" ref={containerRef}>
       {notifications.map((notification) => (
         <div 
           key={notification.id} 
