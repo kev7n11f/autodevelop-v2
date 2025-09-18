@@ -1,7 +1,22 @@
 // Authentication service for frontend
 class AuthService {
   constructor() {
-    this.apiBase = '/api/auth';
+    // Allow overriding the API base in development via Vite env var VITE_API_BASE.
+    // When not set, default to the proxied path used by the frontend dev server.
+    // Example for local development: VITE_API_BASE=http://localhost:3001/api/auth
+    const apiBaseFromEnv = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE) || null;
+
+    // If a Vite env var is provided, use it. Otherwise, in local development
+    // prefer the direct backend URL to avoid dev-proxy or CORS surprises.
+    const isLocalhost = (typeof window !== 'undefined' && window.location.hostname === 'localhost') || process.env.NODE_ENV !== 'production';
+
+    if (apiBaseFromEnv) {
+      this.apiBase = apiBaseFromEnv;
+    } else if (isLocalhost) {
+      this.apiBase = 'http://localhost:3001/api/auth';
+    } else {
+      this.apiBase = '/api/auth';
+    }
     this.user = null;
     this.isAuthenticated = false;
     this.listeners = [];
