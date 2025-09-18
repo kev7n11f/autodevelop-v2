@@ -25,10 +25,14 @@ const generateTokens = (user) => {
     { expiresIn: JWT_EXPIRES_IN }
   );
 
+  // Create a cryptographically-random refresh token (opaque) to allow rotation
   const refreshToken = crypto.randomBytes(40).toString('hex');
   
   return { accessToken, refreshToken };
 };
+
+// Export helper for tests
+exports.generateTokens = generateTokens;
 
 /*
  * ARCHIVED GOOGLE OAUTH CALLBACK (for future restoration)
@@ -56,11 +60,11 @@ exports.googleCallback = async (req, res) => {
     
     // Calculate token expiration
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
-    
-    // Create user session
+
+    // Persist the refresh token (opaque) so it can be revoked/rotated if needed
     await database.createUserSession({
       userId: user.id,
-      sessionToken: accessToken,
+      sessionToken: null, // stateless: do not store access token
       refreshToken,
       expiresAt: expiresAt.toISOString(),
       ipAddress: req.ip,
@@ -70,14 +74,16 @@ exports.googleCallback = async (req, res) => {
     // Update last login
     await database.updateUserLastLogin(user.id);
 
-    // Set secure HTTP-only cookies
+    // Set secure HTTP-only cookies. Use SameSite=None for cross-origin requests
+    // when frontend and backend are on different domains. Ensure HTTPS in prod.
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     };
 
+    // Access token is a stateless JWT; refreshToken is stored server-side for rotation
     res.cookie('accessToken', accessToken, cookieOptions);
     res.cookie('refreshToken', refreshToken, cookieOptions);
 
@@ -160,46 +166,37 @@ exports.logout = async (req, res) => {
 exports.refreshToken = async (req, res) => {
   try {
     const { refreshToken } = req.cookies;
-    
-    if (!refreshToken) {
-      return res.status(401).json({ error: 'No refresh token provided' });
-    }
+    if (!refreshToken) return res.status(401).json({ error: 'No refresh token provided' });
 
-    // Get session by refresh token
+    // Validate refresh token exists in DB (opaque token)
     const session = await database.getUserSession(refreshToken);
-    
-    if (!session) {
-      return res.status(401).json({ error: 'Invalid refresh token' });
-    }
+    if (!session) return res.status(401).json({ error: 'Invalid refresh token' });
 
-    // Generate new tokens
+    // Build user payload and issue new access token and rotated refresh token
     const user = {
       id: session.user_id,
       email: session.email,
       name: session.name,
       google_id: session.google_id
     };
-    
+
     const { accessToken: newAccessToken, refreshToken: newRefreshToken } = generateTokens(user);
-    
-    // Update session
+
+    // Persist rotated refresh token and remove old one
     await database.createUserSession({
       userId: user.id,
-      sessionToken: newAccessToken,
+      sessionToken: null,
       refreshToken: newRefreshToken,
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       ipAddress: req.ip,
       userAgent: req.get('User-Agent')
     });
-
-    // Delete old session
     await database.deleteUserSession(refreshToken);
 
-    // Set new cookies
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000
     };
 
@@ -326,10 +323,10 @@ exports.register = async (req, res) => {
     // Calculate token expiration
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
     
-    // Create user session
+    // Persist the opaque refresh token for rotation/revocation
     await database.createUserSession({
       userId: user.id,
-      sessionToken: accessToken,
+      sessionToken: null,
       refreshToken,
       expiresAt: expiresAt.toISOString(),
       ipAddress: req.ip,
@@ -339,11 +336,11 @@ exports.register = async (req, res) => {
     // Update last login
     await database.updateUserLastLogin(user.id);
 
-    // Set secure HTTP-only cookies
+    // Set secure HTTP-only cookies with SameSite=None in production for cross-site
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     };
 

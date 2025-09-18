@@ -7,6 +7,10 @@ require('dotenv').config({ path: '../.env' });
 const express = require('express');
 const cors = require('cors');
 
+// Mount backend routes where appropriate so Vercel serverless functions
+// expose the same API surface as the full backend server.
+const authRoutes = require('../backend/routes/authRoutes');
+
 // Create Express app
 const app = express();
 
@@ -88,6 +92,10 @@ app.post('/api/chat', async (req, res) => {
     });
   }
 });
+
+// Mount auth routes from backend so endpoints like /api/auth/register and /api/auth/login
+// are available in the serverless API deployment.
+app.use('/api/auth', authRoutes);
 
 // Chat suggestions endpoint
 app.get('/api/chat/suggestions', (req, res) => {
