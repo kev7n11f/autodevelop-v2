@@ -224,6 +224,7 @@ function AppContent() {
               <Route path="/contact" element={<Contact />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/terms" element={<TermsOfService />} />
+              <Route path="/login" element={<Login />} />
               <Route path="/admin/email-list" element={<AdminEmailList />} />
             </Routes>
           </div>

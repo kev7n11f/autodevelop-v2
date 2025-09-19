@@ -199,6 +199,7 @@ export default function Login() {
                   onChange={handleInputChange}
                   className={errors.password ? 'error' : ''}
                   placeholder="Enter your password"
+                  autoComplete={isLoginMode ? 'current-password' : 'new-password'}
                 />
                 {errors.password && <span className="field-error">{errors.password}</span>}
                 {!isLoginMode && (
@@ -219,6 +220,7 @@ export default function Login() {
                     onChange={handleInputChange}
                     className={errors.confirmPassword ? 'error' : ''}
                     placeholder="Confirm your password"
+                    autoComplete="new-password"
                   />
                   {errors.confirmPassword && <span className="field-error">{errors.confirmPassword}</span>}
                 </div>
