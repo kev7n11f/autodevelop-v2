@@ -17,9 +17,12 @@
     "deploy:dev": "serverless deploy --stage dev",
     "deploy:prod": "serverless deploy --stage prod",
     "setup:demo": "cp .env.demo .env && echo 'Demo environment copied to .env. Update with your real API keys for full functionality.'",
-    "validate:env": "node -e \"require('dotenv').config(); const {validateEnvironmentVariables, logValidationResults} = require('./backend/utils/envValidator'); const env = process.env.NODE_ENV || 'development'; const result = validateEnvironmentVariables(env); logValidationResults(result); console.log('\\nFor production deployment, all environment variables must be set with real values.'); process.exit(result.isValid ? 0 : 1);\""
+    "validate:env": "node -e \"require('dotenv').config(); const {validateEnvironmentVariables, logValidationResults} = require('./backend/utils/envValidator'); const env = process.env.NODE_ENV || 'development'; const result = validateEnvironmentVariables(env); logValidationResults(result); console.log('\\nFor production deployment, all environment variables must be set with real values.'); process.exit(result.isValid ? 0 : 1);\"",
+    "migrate:sqlite-to-postgres": "node scripts/migrate/sqlite_to_postgres.js",
+    "validate:db": "node -e \"(async()=>{ if(process.env.DATABASE_URL){ const db=require('./backend/utils/database'); await db.connect(); console.log('DB OK'); await db.close(); } else { console.log('No DATABASE_URL set - using SQLite by default'); } })()\""
   },
   "dependencies": {
+    "pg": "^8.11.0",
     "@kinde-oss/kinde-auth-nextjs": "^2.9.0",
     "@sendgrid/mail": "^8.1.5",
     "argon2": "^0.44.0",

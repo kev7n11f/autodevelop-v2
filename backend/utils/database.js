@@ -1,20 +1,36 @@
-const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const logger = require('./logger');
+
+// If a DATABASE_URL is present, switch to the Postgres adapter (serverless-friendly)
+if (process.env.DATABASE_URL) {
+  logger.info('DATABASE_URL detected - using Postgres adapter');
+  module.exports = require('./pgDatabase');
+  return;
+}
+
+const sqlite3 = require('sqlite3').verbose();
 const crypto = require('crypto');
 const fs = require('fs');
-const logger = require('./logger');
 
 class Database {
   constructor() {
     this.db = null;
     // Use environment-appropriate database path
     // In production/Render, use /tmp or writable directory
-    if (process.env.NODE_ENV === 'production' || process.env.RENDER) {
+    // Priority order for DB path:
+    // 1. Explicit env `DATABASE_PATH`
+    // 2. If running in a container/production and /tmp is expected writable, use /tmp
+    // 3. Otherwise use a persistent `data/` directory at the project root so DB isn't lost
+    if (process.env.DATABASE_PATH) {
+      this.dbPath = process.env.DATABASE_PATH;
+    } else if (process.env.NODE_ENV === 'production' || process.env.RENDER) {
       // Render and other container platforms provide /tmp as writable
-      this.dbPath = process.env.DATABASE_PATH || '/tmp/mailing_list.db';
+      this.dbPath = '/tmp/mailing_list.db';
     } else {
-      // Development - use local directory
-      this.dbPath = process.env.DATABASE_PATH || path.join(__dirname, '..', 'mailing_list.db');
+      // Development - prefer project-root `data/` for persistence across restarts
+      // __dirname is backend/utils -> project root is two levels up
+      const projectRoot = path.resolve(__dirname, '..');
+      this.dbPath = path.join(projectRoot, 'data', 'mailing_list.db');
     }
     
     logger.info('Database path configured:', { dbPath: this.dbPath, nodeEnv: process.env.NODE_ENV });

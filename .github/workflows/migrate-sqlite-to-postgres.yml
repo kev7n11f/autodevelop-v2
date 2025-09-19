@@ -1,0 +1,35 @@
+name: Migrate SQLite to Postgres
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run migration (SQLite -> Postgres)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          echo "Starting migration..."
+          node -r dotenv/config scripts/migrate/sqlite_to_postgres.js
+
+      - name: Validate DB connection
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          echo "Validating DB connection..."
+          node -r dotenv/config -e "(async()=>{ const db=require('./backend/utils/database'); try{ await db.connect(); console.log('DB Connected'); await db.close(); }catch(e){ console.error('Connect failed:', e && e.message ? e.message : e); process.exit(2);} })()"
