@@ -367,12 +367,55 @@ exports.register = async (req, res) => {
     });
 
   } catch (error) {
+    // Log full error server-side
     logger.error('Error in user registration:', {
       error: error.message,
       stack: error.stack,
       email: req.body?.email
     });
+
+    // For safe debugging: if caller provides the ADMIN_KEY via `x-admin-key` header
+    // or if we're not in production (dev), include error details in the response.
+    const callerKey = req.get('x-admin-key') || req.get('x-admin-key'.toLowerCase());
+    const isAdmin = process.env.ADMIN_KEY && callerKey && callerKey === process.env.ADMIN_KEY;
+    const exposeDetails = isAdmin || process.env.NODE_ENV !== 'production';
+
+    if (exposeDetails) {
+      return res.status(500).json({ error: 'Registration failed', details: error.message, stack: error.stack });
+    }
+
     res.status(500).json({ error: 'Registration failed' });
+  }
+};
+
+// Admin-only DB status endpoint for debugging runtime adapter and connectivity
+exports.getDbStatus = async (req, res) => {
+  try {
+    const callerKey = req.get('x-admin-key');
+    if (!process.env.ADMIN_KEY || !callerKey || callerKey !== process.env.ADMIN_KEY) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    // Lazy require to avoid startup cycles
+    const database = require('../utils/database');
+    // Connect (idempotent) to verify connectivity
+    await database.connect();
+
+    const adapter = process.env.DATABASE_URL ? 'postgres' : 'sqlite';
+    // Try a benign lookup to ensure queries work
+    let sample = null;
+    try {
+      sample = await database.getUserByEmail('no-one@example.com');
+    } catch (e) {
+      // include error info below
+    }
+
+    await database.close && (await database.close());
+
+    res.json({ adapter, dbPath: database.dbPath || null, sampleUserExists: !!sample, sampleError: sample ? null : undefined });
+  } catch (error) {
+    logger.error('Error in getDbStatus:', { error: error.message, stack: error.stack });
+    res.status(500).json({ error: 'DB status check failed', details: error.message });
   }
 };
 

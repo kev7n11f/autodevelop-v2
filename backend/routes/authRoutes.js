@@ -49,6 +49,12 @@ router.get('/google/callback',
 router.post('/register', register);
 router.post('/login', login);
 
+// Admin-only DB status endpoint
+router.get('/db-status', (req, res, next) => {
+  // Forward to controller handler which enforces ADMIN_KEY
+  return require('../controllers/authController').getDbStatus(req, res, next);
+});
+
 // User management routes
 router.get('/me', authenticateToken, getCurrentUser);
 router.post('/logout', optionalAuth, logout);

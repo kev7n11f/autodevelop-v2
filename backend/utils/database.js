@@ -1,6 +1,14 @@
 const path = require('path');
 const logger = require('./logger');
 
+// Helpful warning: many users set SUPABASE_* secrets but forget to provide a
+// full Postgres `DATABASE_URL`. In that case the app will fall back to SQLite
+// (which is ephemeral on serverless hosts). Log a clear warning to help
+// diagnose misconfiguration in production environments.
+if (!process.env.DATABASE_URL && (process.env.SUPABASE_URL || process.env.SUPABASE_PASSWORD || process.env.SUPABASE_DB_URL)) {
+  logger.warn('Supabase environment variables detected but DATABASE_URL is not set. The app will default to SQLite.\nSet DATABASE_URL to your Postgres connection string (for example from Supabase) in your deployment environment to use Postgres.');
+}
+
 // If a DATABASE_URL is present, switch to the Postgres adapter (serverless-friendly)
 if (process.env.DATABASE_URL) {
   logger.info('DATABASE_URL detected - using Postgres adapter');
