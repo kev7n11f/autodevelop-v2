@@ -75,12 +75,12 @@ export default function About() {
           <h2>Our Story</h2>
           <p>
             AutoDevelop.ai was born from the frustration of seeing great ideas never come to life due to technical barriers. 
-            Our founders, a team of experienced developers and AI researchers, witnessed countless entrepreneurs and creators 
+            Our founder, Kevin Franklin, a visionary and AI enthusiast, witnessed countless entrepreneurs and creators 
             struggle to translate their visions into working applications.
           </p>
           <p>
-            We realized that while AI was becoming incredibly powerful, it wasn't being used to its full potential to 
-            democratize software development. That's when we decided to build a platform that could bridge the gap 
+            Kevin realized that while AI was becoming incredibly powerful, it wasn't being used to its full potential to 
+            democratize software development. That's when he decided to build a platform that could bridge the gap 
             between imagination and implementation.
           </p>
           <p>
